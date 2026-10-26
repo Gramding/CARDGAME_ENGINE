@@ -1,4 +1,4 @@
-<title>Krarkashima Playtester</title>
+<title>Commander Playtester</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,7 +131,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .pile.cmd .empty { width: var(--tile); }
 
 /* ---------------- status bar */
-.status { display: flex; align-items: center; gap: 6px 14px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; background: #1d1f24; border-top: 1px solid var(--line);
+.status { display: flex; align-items: center; gap: 6px 10px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; background: #1d1f24; border-top: 1px solid var(--line);
   padding-block: 7px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
 .sgrp { display: inline-flex; align-items: center; gap: 5px; flex: none; }
 .sbtn { border: 1px solid transparent; background: none; padding: 5px 8px; border-radius: 8px; font-weight: 700; flex: none; }
@@ -144,7 +144,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .pip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); flex: none; }
 .pip b { font-family: var(--mono); min-width: 1.6ch; text-align: center; font-variant-numeric: tabular-nums; }
 .sym { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 12px; color: #fff; }
-.sym.R { background: #d4462b } .sym.U { background: #3b6fe0 } .sym.C { background: #7c8193 } .sym.A { background: linear-gradient(135deg, #d4462b 50%, #3b6fe0 50%) } .sym.T { background: #b8892e; color: #1a1206 }
+.sym.R { background: #d4462b } .sym.U { background: #3b6fe0 } .sym.B { background: #4a3f55 } .sym.W { background: #e8dfb8; color: #2a2414 } .sym.G { background: #2f8a4a } .sym.C { background: #7c8193 } .sym.A { background: linear-gradient(135deg, #d4462b 50%, #3b6fe0 50%) } .sym.T { background: #b8892e; color: #1a1206 }
 .spacer { flex: 1 0 8px; }
 .hist .sbtn.go { background: var(--red); color: #1a0d09; }
 
@@ -305,12 +305,7 @@ table.metrics tr.now td { color: var(--red); font-weight: 700; }
     <span class="sgrp" title="Your life"><button class="mini" data-act="life:-1" aria-label="Lose 1 life">−</button>♥ <span class="sval" id="life">40</span><button class="mini" data-act="life:1" aria-label="Gain 1 life">+</button></span>
     <span class="sgrp krark" aria-live="polite" title="Krark triggers per instant or sorcery"><button class="mini" data-act="k:-1" aria-label="One fewer Krark trigger">−</button><span class="big" id="krark">0</span><span class="slbl">Krark <span id="krarkHint">auto</span></span><button class="mini" data-act="k:1" aria-label="One more Krark trigger">+</button></span>
     <span class="sgrp"><span class="slbl">storm</span><span class="sval" id="storm">0</span></span>
-    <span class="sgrp" aria-label="Mana pool: click adds one, right-click removes one">
-      <button class="pip" data-act="pool:R,1" data-alt="pool:R,-1" title="Red: click +1, right-click −1"><span class="sym R">R</span><b id="pR">0</b></button>
-      <button class="pip" data-act="pool:U,1" data-alt="pool:U,-1" title="Blue: click +1, right-click −1"><span class="sym U">U</span><b id="pU">0</b></button>
-      <button class="pip" data-act="pool:C,1" data-alt="pool:C,-1" title="Colourless: click +1, right-click −1"><span class="sym C">C</span><b id="pC">0</b></button>
-      <button class="pip" data-act="pool:A,1" data-alt="pool:A,-1" title="Any colour: click +1, right-click −1"><span class="sym A">★</span><b id="pA">0</b></button>
-    </span>
+    <span class="sgrp" id="poolPips" aria-label="Mana pool: click adds one, right-click removes one"></span>
     <span class="sgrp" title="Treasures: click +1, right-click −1"><button class="pip" data-act="treas:+" data-alt="treas:-"><span class="sym T">T</span><b id="treas">0</b></button><button class="mini" data-act="treas:use" title="Sacrifice one for any-colour mana">use</button></span>
     <span class="sgrp"><span class="slbl">mana up</span><span class="sval" id="avail">0</span></span>
     <span class="spacer"></span>
@@ -320,6 +315,7 @@ table.metrics tr.now td { color: var(--red); font-weight: 700; }
       <button class="sbtn" data-act="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
     </span>
     <span class="sgrp" id="playBar">
+      <button class="sbtn" data-act="combat" title="Beginning of combat, attack, then damage to the targeted opponent">⚔ Combat</button>
       <button class="sbtn" data-act="loop" title="Record one iteration, then repeat it or mark it infinite">Start loop</button>
       <button class="sbtn next" data-act="next">⟳ Next turn</button>
     </span>

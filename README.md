@@ -1,7 +1,8 @@
 # Cardgame engine
 
-A browser playtester for Magic: The Gathering, starting from a Krark, the Thumbless + Sakashima of a
-Thousand Faces cEDH deck, plus a Python simulator for that deck. The plan is to grow the playtester
+A browser playtester for Commander goldfishing. It ships with two cEDH decks, Krark, the Thumbless +
+Sakashima of a Thousand Faces and Kefka, Court Mage, and plays any deck you import. There is also a
+Python simulator for the Krark deck. The plan is to grow the playtester
 into a general engine where card behaviour lives in per-card scripts and anything unscripted can
 still be played by hand.
 
@@ -11,7 +12,7 @@ still be played by hand.
 
 | Path | What it is |
 | --- | --- |
-| `src/playtester/` | The playtester: `page.html` (layout and styles), `app.js` (game engine and UI), `cards.json` (card data), `images.json` (Scryfall image links) |
+| `src/playtester/` | The playtester: `page.html` (layout and styles), `app.js` (game engine and UI), `cards.json` (every modeled card), `decks.json` (the built-in decks), `images.json` (Scryfall image links) |
 | `src/engine/` | Shared engine code in TypeScript. `registry.ts` knows which cards the engine models and which colors it supports |
 | `src/importer/` | The deck importer: decklist parser, Scryfall lookup, coverage check and the request writer |
 | `web/import/` | The importer page (built by Vite into `site/import/`) |
@@ -22,10 +23,20 @@ still be played by hand.
 
 ## The playtester
 
-Goldfish the deck with a real stack: each Krark trigger flips on its own, triggers that fire together
-can be ordered, you can respond to your own spells, and copies, clones and loops are handled. It
-has undo and redo with seeded randomness, Moxfield-style keybinds (press `?`), a mulligan drill,
-loop recording, repeated casting and automatic win checks.
+Goldfish a deck with a real stack: triggers that fire together can be ordered, you can respond to your
+own spells, and copies, clones and loops are handled. It has undo and redo with seeded randomness,
+Moxfield-style keybinds (press `?`), a mulligan drill, loop recording, repeated casting and automatic
+win checks. Mana covers all five colours, land types for fetches, shocks and painlands.
+
+Switch decks from the Game menu (**Switch deck**).
+
+- **Krark + Sakashima:** each Krark trigger flips on its own, with copies, Birgi, Vivi, Ral, Twinflame
+  loops and the rest of the storm package.
+- **Kefka, Court Mage:** Kefka's discard-and-draw trigger and his {8} transform (Ruler of Ruin draws
+  whenever an opponent loses life), Displacer Kitten flicker, Thassa's Oracle with Demonic
+  Consultation and Tainted Pact, the tutors, flashback and Yawgmoth's Will, evoke, Final Fortune's
+  extra turn, and a combat step with Gogo and Irma. Choices an opponent would make, like what they
+  discard or whether they pay for Rhystic Study, are asked of you.
 
 Build and open it locally:
 
@@ -53,9 +64,13 @@ heading works too). The importer looks every card up on Scryfall and sorts each 
 - **Data only:** a mana land, fetch land or mana rock that only needs a data entry.
 - **Needs scripting:** anything with its own rules.
 
-It also flags engine work the deck needs first, such as a color the engine can't make yet. Then it
-writes a request with every missing card's cost, type and full rules text. Copy it or download it
+If no commander is marked, it guesses the one legendary creature whose colours cover the whole deck.
+It writes a request with every missing card's cost, type and full rules text. Copy it or download it
 as Markdown and send it to Claude to get those cards implemented.
+
+**Play it in the playtester** hands the deck over right away. Cards the engine doesn't model yet come
+along as plain cards (type, cost, power and toughness, image, and the mana a simple land makes) that
+you play by hand. Imported decks stay in your browser and show up under **Switch deck**.
 
 Lookups are cached in your browser for a week.
 

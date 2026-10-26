@@ -1,14 +1,16 @@
 import { deckNames, deckSize, parseDecklist, type ParsedDeck } from "../../src/importer/parse";
 import { coverage, type Coverage, type Status } from "../../src/importer/coverage";
 import { buildPrompt } from "../../src/importer/prompt";
-import { imageOf, lookupCards } from "../../src/importer/scryfall";
+import { imageOf, lookupCards, type CardData } from "../../src/importer/scryfall";
+import { applyCommander, guessCommander } from "../../src/importer/commander";
+import { playDeck, saveDeck } from "../../src/importer/deck";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
 const LABEL: Record<Status, string> = { modeled: "Modeled", data: "Data only", script: "Needs scripting" };
 const DRAFT_KEY = "cge-import-draft";
 
-let current: { deck: ParsedDeck; cov: Coverage } | null = null;
+let current: { deck: ParsedDeck; cov: Coverage; cards: Map<string, CardData>; guessed: string | null } | null = null;
 let filter: Status | "all" = "all";
 
 function setStatus(text: string, bad = false) {
@@ -27,18 +29,21 @@ function renderGrid() {
 
 function render() {
   if (!current) return;
-  const { deck, cov } = current;
+  const { deck, cov, guessed } = current;
   const size = deckSize(deck);
   $("summary").innerHTML = [
     ["", String(size), "cards"], ["", cov.colors.join("") || "C", "colors"],
     ["modeled", String(cov.counts.modeled), "modeled"], ["data", String(cov.counts.data), "data only"], ["script", String(cov.counts.script), "need scripting"],
   ].map(([cls, v, l]) => `<div class="stat ${cls}"><b>${esc(v)}</b><span>${l}</span></div>`).join("");
   const warns = [...deck.warnings];
+  if (guessed) warns.push(`No commander was marked, so the guess is ${guessed.split(" // ")[0]}: the only legendary creature whose colors cover the whole deck. To pick another, put it first with a blank line after it.`);
   if (!deck.commanders.length) warns.push("No commander found. Put it first with a blank line after it, or under a \"Commander\" heading.");
   if (size !== 100) warns.push(`The list has ${size} cards; a Commander deck has 100.`);
   $("warnings").innerHTML = warns.map(w => `<p class="warn">${esc(w)}</p>`).join("");
   $("gaps").innerHTML = cov.gaps.map(g => `<div class="gap"><b>Engine work first: ${esc(g.title)}</b><p>${esc(g.detail)}${g.cards.length ? ` Affects ${g.cards.length} modeled card${g.cards.length === 1 ? "" : "s"}: ${esc(g.cards.join(", "))}.` : ""}</p></div>`).join("");
   renderGrid();
+  const manual = cov.counts.data + cov.counts.script;
+  $("playHint").textContent = manual ? `${manual} card${manual === 1 ? " isn't" : "s aren't"} modeled yet. They come along as plain cards you play by hand.` : "Every card is modeled.";
   $("result").hidden = false;
   const missing = cov.counts.data + cov.counts.script + cov.gaps.length;
   $("promptBox").hidden = !missing;
@@ -48,14 +53,16 @@ function render() {
 async function check() {
   const text = ($("deckText") as HTMLTextAreaElement).value;
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, name: ($("deckName") as HTMLInputElement).value })); } catch { /* per-browser only */ }
-  const deck = parseDecklist(text);
+  let deck = parseDecklist(text);
   const names = deckNames(deck);
   if (!names.length) { setStatus("Paste a decklist first.", true); return; }
   const btn = $("check") as HTMLButtonElement;
   btn.disabled = true;
   try {
     const { cards, notFound } = await lookupCards(names, (done, total) => setStatus(`Looking up cards on Scryfall: ${done} of ${total}`));
-    current = { deck, cov: coverage(names, cards) };
+    const guessed = deck.commanders.length ? null : guessCommander(deck, cards);
+    if (guessed) deck = applyCommander(deck, guessed);
+    current = { deck, cov: coverage(deckNames(deck), cards), cards, guessed };
     setStatus(notFound.length ? `Done. Not found on Scryfall: ${notFound.join(", ")}` : `Done. ${names.length} cards checked.`, notFound.length > 0);
     render();
   } catch (e) {
@@ -64,6 +71,13 @@ async function check() {
 }
 
 $("check").addEventListener("click", check);
+$("play").addEventListener("click", () => {
+  if (!current) return;
+  if (!current.deck.commanders.length) { setStatus("Mark the commander first: put it first with a blank line after it.", true); return; }
+  const d = playDeck(current.deck, current.cov, current.cards, ($("deckName") as HTMLInputElement).value.trim());
+  try { saveDeck(d); } catch { setStatus("This browser blocks storage, so the deck can't be handed to the playtester.", true); return; }
+  location.href = `../?deck=${encodeURIComponent(d.id)}`;
+});
 document.querySelectorAll<HTMLButtonElement>("[data-filter]").forEach(b => b.addEventListener("click", () => {
   filter = b.dataset.filter as Status | "all";
   document.querySelectorAll("[data-filter]").forEach(x => x.classList.toggle("on", x === b));

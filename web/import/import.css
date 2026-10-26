@@ -52,4 +52,5 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .badge.modeled { background: var(--modeled); } .badge.data { background: var(--data); } .badge.script { background: var(--script); }
 #prompt { margin-top: 12px; font-size: 12px; }
 .hint { margin: 0; color: var(--muted); font-size: 14px; }
+.playrow { margin: 0 0 14px; }
 .credit { color: var(--muted); font-size: 12px; margin: 0; }

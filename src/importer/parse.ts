@@ -1,6 +1,7 @@
 /* Decklist text -> card names and counts. Handles the usual exports: Moxfield and Arena text
    ("1 Sol Ring", "1x Sol Ring", "1 Sol Ring (C21) 263 *F*"), section headers ("Commander", "Deck",
-   "Sideboard"), comments, and a commander written first and set apart by a blank line. */
+   "Sideboard"), comments, and a commander set apart by a blank line at the start or end of the list.
+   A list with no marked commander gets one guessed from the card data (see commander.ts). */
 
 export interface DeckLine {
   name: string;
@@ -40,10 +41,15 @@ export function parseDecklist(text: string): ParsedDeck {
     else { entries.push({ entry, block }); blockHasCards = true; }
   });
 
-  // No commander marked: a first block of one or two cards set apart by a blank line is the command zone.
+  // No commander marked: a block of one or two cards set apart by a blank line at the start of the list
+  // (or at the end, as some exports put it) is the command zone.
   const first = entries.filter(e => e.block === 0);
+  const lastBlock = entries.length ? entries[entries.length - 1].block : 0;
+  const last = entries.filter(e => e.block === lastBlock);
   if (!commanders.length && first.length >= 1 && first.length <= 2 && entries.length > first.length) {
     for (const e of first) commanders.push(e.entry.name);
+  } else if (!commanders.length && lastBlock > 0 && last.length <= 2 && last.every(e => e.entry.qty === 1)) {
+    for (const e of last) commanders.push(e.entry.name);
   }
   const cards = entries.filter(e => !commanders.includes(e.entry.name)).map(e => e.entry);
   return { commanders, cards, warnings };

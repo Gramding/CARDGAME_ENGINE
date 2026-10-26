@@ -1,8 +1,8 @@
 """Build the static site: src/playtester -> site/index.html.
 
 The page template holds the <title>, font links and <style> first, then the body markup with a
-/*APP*/ placeholder; app.js holds /*CARDS*/[] and /*IMGS*/{} placeholders for the card data and the
-Scryfall image map. The result is one self-contained HTML file plus .nojekyll for GitHub Pages.
+/*APP*/ placeholder; app.js holds /*CARDS*/[], /*DECKS*/[] and /*IMGS*/{} placeholders for the card data, the deck
+lists and the Scryfall image map. The result is one self-contained HTML file plus .nojekyll for GitHub Pages.
 """
 import json
 import pathlib
@@ -18,6 +18,7 @@ RESET = ("<style>:root{color-scheme:dark}body{margin:0}img{max-width:100%}"
 def build():
     app = (SRC / "app.js").read_text()
     app = app.replace("/*CARDS*/[]", json.dumps(json.loads((SRC / "cards.json").read_text()), separators=(",", ":")), 1)
+    app = app.replace("/*DECKS*/[]", json.dumps(json.loads((SRC / "decks.json").read_text()), separators=(",", ":")), 1)
     app = app.replace("/*IMGS*/{}", json.dumps(json.loads((SRC / "images.json").read_text()), separators=(",", ":")), 1)
     page = (SRC / "page.html").read_text().replace("/*APP*/", app, 1)
     cut = page.index("</style>") + len("</style>")

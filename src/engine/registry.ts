@@ -1,5 +1,5 @@
 /* What the playtester engine can already play. Today that is the card data the playtester ships with
-   (src/playtester/cards.json) and the mana colors its pool and costs understand. The importer checks
+   (src/playtester/cards.json) and the mana colors its pool and costs understand (all five). The importer checks
    decks against this; once card behavior moves into per-card scripts, this becomes the script index. */
 import playtesterCards from "../playtester/cards.json";
 
@@ -16,7 +16,7 @@ const MODELED = new Map<string, ModeledCard>();
 for (const c of playtesterCards as ModeledCard[]) MODELED.set(c.n, c);
 
 /** Colors the engine's mana pool, cost parser and mana sources handle. */
-export const SUPPORTED_COLORS: readonly Color[] = ["U", "R"];
+export const SUPPORTED_COLORS: readonly Color[] = ["W", "U", "B", "R", "G"];
 
 export const COLOR_NAMES: Record<Color, string> = { W: "white", U: "blue", B: "black", R: "red", G: "green" };
 

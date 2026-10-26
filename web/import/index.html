@@ -14,7 +14,7 @@
   <div class="inner">
     <a class="back" href="../">← Playtester</a>
     <h1>Deck import</h1>
-    <p class="lede">Paste a Commander list. The importer looks every card up on Scryfall, checks which ones the engine can already play, and writes a request you can send to Claude for the rest.</p>
+    <p class="lede">Paste a Commander list. The importer looks every card up on Scryfall, checks which ones the engine can already play, writes a request you can send to Claude for the rest, and can hand the deck to the playtester.</p>
   </div>
 </header>
 
@@ -34,6 +34,7 @@
   <section class="panel" id="result" aria-labelledby="resultTitle" hidden>
     <h2 id="resultTitle">2 · Coverage</h2>
     <div class="summary" id="summary"></div>
+    <div class="row playrow"><button class="btn primary" id="play">Play it in the playtester</button><span class="hint" id="playHint"></span></div>
     <div id="warnings"></div>
     <div id="gaps"></div>
     <div class="filters" role="tablist" aria-label="Show cards">
