@@ -1,0 +1,378 @@
+<title>Krarkashima Playtester</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&family=Saira+Condensed:wght@500;700;800&display=swap">
+<style>
+/* Layout: a playtester table. The battlefield fills the screen, the hand and the zone piles sit in a
+   tray along the bottom, and a status bar under it holds life, Krark triggers, storm and the pool.
+   One dark felt look on purpose, like a real table; Izzet accents (Krark red, island blue). */
+:root {
+  --bg: #121317; --felt: #1a1c21; --grid: #ffffff08; --panel: #1f2228; --panel2: #272a31; --ink: #e8eaf0; --muted: #9aa0b0; --line: #343844;
+  --red: #ff6f52; --blue: #7d9dff; --win: #e3a35a; --good: #4cc48a; --warn: #e2b23f; --bad: #ff7a70;
+  --land: #8fb087; --spell: #ff6f52; --creature: #7d9dff; --artifact: #9ba1b6; --ench: #b892f0;
+  --display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 10px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.35; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.app { height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; }
+
+/* ---------------- battlefield */
+.table { position: relative; min-height: 0; overflow: auto; background-color: var(--felt);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 28px 28px;
+  padding-block: 10px 18px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.tbl-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; position: sticky; top: 0; z-index: 3; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.tchip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.tchip b { color: var(--ink); font-family: var(--display); font-size: 15px; letter-spacing: .03em; }
+.tchip.eng { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oppbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.opps { display: flex; gap: 6px; }
+.opp { display: flex; flex-direction: column; align-items: center; padding: 3px 9px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); min-width: 56px; }
+.opp b { font-family: var(--mono); font-size: 16px; } .opp small { font-family: var(--mono); font-size: 10px; color: var(--muted) }
+.opp.tgt { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); } .opp.dead { opacity: .45 }
+.mini { min-width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); font-family: var(--mono); font-weight: 700; padding: 0 7px; font-size: 12px; }
+.banner { position: sticky; top: 46px; z-index: 4; margin: 8px auto 0; width: fit-content; max-width: min(720px, 100%); padding: 8px 14px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; box-shadow: 0 6px 20px #0008; }
+.banner.win { border-color: var(--win); } .banner.warn { border-color: var(--warn); } .banner.bad { border-color: var(--bad); color: var(--bad) }
+.bf { display: grid; gap: 14px; padding-top: 14px; }
+.bfz { --tile: clamp(56px, 6.2vw, 100px); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: calc(var(--tile) * 0.6); }
+.bf-row { position: relative; padding-top: 14px; }
+.bf-row > .rlabel { position: absolute; top: 0; left: 0; font-family: var(--display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #ffffff38; }
+.bf-row.lands { border-top: 1px dashed #ffffff14; padding-top: 18px; }
+.empty { color: #ffffff40; margin: 4px 0; font-size: 13px; }
+
+/* ---------------- cards */
+.zone { display: flex; flex-wrap: wrap; gap: 6px; }
+.card { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; max-width: 190px; padding: 6px 9px 6px 10px; border-radius: 9px;
+  border: 1px solid var(--line); border-left: 4px solid var(--artifact); background: var(--panel2); }
+.card .cn { font-weight: 700; font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.card .cc { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.card .tax { font-family: var(--display); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--win); }
+.k-land { border-left-color: var(--land) } .k-spell { border-left-color: var(--spell) } .k-creature { border-left-color: var(--creature) } .k-artifact { border-left-color: var(--artifact) } .k-enchantment { border-left-color: var(--ench) }
+.card.tapped { opacity: .6; }
+.card.token { border-style: dashed; border-left-style: solid; }
+.card.bottom { outline: 2px dashed var(--warn); outline-offset: 1px; }
+.card.pic { width: var(--tile); max-width: none; padding: 0; border: 0; border-radius: 6px; background: transparent; transition: transform .12s ease; }
+.card.pic .art { display: block; width: 100%; height: auto; aspect-ratio: 488 / 680; border-radius: 5.5%/4%; box-shadow: 0 2px 6px #000a; }
+.card.pic .cn { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.card.pic .cc:empty { display: none }
+.card.pic .cc, .card.pic .tax { position: absolute; left: 4px; right: 4px; padding: 1px 5px; border-radius: 5px; text-align: center; line-height: 1.3;
+  background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--ink); font-size: 10px; overflow-wrap: anywhere; }
+.card.pic .cc { bottom: 4px; } .card.pic .tax { top: 4px; color: var(--win); }
+.card .count { position: absolute; top: -7px; right: -7px; z-index: 1; min-width: 30px; padding: 2px 7px; border-radius: 999px; background: var(--red); color: #fff;
+  font-family: var(--display); font-weight: 800; font-size: 16px; line-height: 1.2; text-align: center; box-shadow: 0 1px 4px #000a; }
+.card.pic.token .art { outline: 2px dashed #ffffff60; outline-offset: 1px; }
+.card.pic.bottom { outline: 3px solid var(--warn); outline-offset: 2px; border-radius: 7px; }
+.card.pic:hover .art { box-shadow: 0 0 0 2px var(--blue), 0 4px 12px #000c; }
+/* tapped permanents turn sideways like on a real table */
+.bfz .card.pic.tapped { width: calc(var(--tile) * 1.3934); height: var(--tile); opacity: 1; }
+.bfz .card.pic.tapped .art { position: absolute; width: var(--tile); left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); filter: brightness(.8); }
+
+/* ---------------- stack and mulligan overlays on the table */
+.stackp { position: absolute; z-index: 5; right: max(14px, env(safe-area-inset-right, 0px)); top: 52px; width: min(380px, calc(100% - 28px));
+  max-height: calc(100% - 70px); display: flex; flex-direction: column; background: color-mix(in srgb, var(--panel) 96%, transparent);
+  border: 1px solid var(--red); border-radius: 12px; padding: 10px; box-shadow: 0 10px 30px #000a; }
+.stackp h2, .ov h2, .drawer h2 { margin: 0 0 8px; font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.stackp h2 .n, .drawer h2 .n { font-family: var(--mono); color: var(--ink); font-size: 13px }
+.stack { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0; }
+.si { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 4px 10px 4px 5px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); }
+.si.top { border-color: var(--red); box-shadow: inset 3px 0 0 var(--red); }
+.si .sthumb { width: 28px; aspect-ratio: 488 / 680; border-radius: 3px; flex: none; object-fit: cover; }
+.si .sthumb.blank { background: var(--line); }
+.si .sl { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; font-size: 13px; }
+.si .sk { font-family: var(--display); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.si.top .sk { color: var(--red); }
+.autos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.autochip { border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--panel2)); color: var(--ink); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+.autochip:hover { border-color: var(--red); }
+.si.stop { outline: 2px dashed var(--warn); outline-offset: 1px; }
+.si.stop .sk { color: var(--warn); font-weight: 800; }
+.si-copy .sl { font-style: italic; }
+.ov { position: absolute; z-index: 5; left: 50%; top: 38%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 28px)); text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: 0 14px 40px #000c; }
+.ov .bar { justify-content: center; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--panel2); padding: 7px 12px; border-radius: 9px; font-weight: 700; }
+.btn.primary { background: var(--red); border-color: var(--red); color: #1a0d09; }
+.btn.blue { background: var(--blue); border-color: var(--blue); color: #0b1020; }
+.btn.quiet { background: transparent; }
+.btn.rec { background: var(--win); border-color: var(--win); color: #1a1206; }
+.btn:disabled, .mini:disabled, .sbtn:disabled { opacity: .4; cursor: default; }
+.info { color: var(--muted); font-size: 13px; }
+
+/* ---------------- tray: hand and piles */
+.tray { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: end; background: #16171b; border-top: 1px solid var(--line);
+  padding-block: 8px 10px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.tray-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 6px; }
+.tlink { background: none; border: 0; padding: 2px 4px; font-weight: 700; color: var(--ink); font-size: 14px; }
+.tlink .k { color: var(--muted); margin-right: 4px; }
+.hand-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.arrow { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel2); font-size: 22px; line-height: 1; }
+.zone.hand { --tile: clamp(70px, 8.4vw, 128px); flex-wrap: nowrap; overflow-x: auto; overflow-y: visible; gap: 10px; padding: 10px 4px 6px; scroll-behavior: smooth; scrollbar-width: thin; min-height: calc(var(--tile) * 1.39 + 16px); }
+.zone.hand .card { flex: none; }
+.zone.hand .card.pic:hover { transform: translateY(-8px); }
+.piles { display: flex; gap: 10px; align-items: flex-end; --tile: clamp(54px, 6.4vw, 104px); }
+.pile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.plabel { font-weight: 700; font-size: 13px; white-space: nowrap; }
+.pslot { width: var(--tile); aspect-ratio: 488 / 680; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); display: grid; place-items: center; color: var(--muted); font-size: 12px; padding: 0; overflow: hidden; position: relative; }
+.pslot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pslot .ptxt { padding: 4px; text-align: center; font-size: 11px; }
+.pslot.back { background: radial-gradient(ellipse at center, #7b4a24 0 34%, #3a2210 35% 40%, #5a3519 41% 100%); border: 3px solid #1d120a; color: #f3d9a6; font-family: var(--display); font-weight: 800; letter-spacing: .06em; font-size: 15px; }
+.pile.cmd .cmdz { --tile: clamp(54px, 6.4vw, 104px); flex-wrap: nowrap; gap: 6px; }
+.pile.cmd .cmdz .card.pic { width: calc(var(--tile) * .74); }
+.pile.cmd .empty { width: var(--tile); }
+
+/* ---------------- status bar */
+.status { display: flex; align-items: center; gap: 6px 14px; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; background: #1d1f24; border-top: 1px solid var(--line);
+  padding-block: 7px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.sgrp { display: inline-flex; align-items: center; gap: 5px; flex: none; }
+.sbtn { border: 1px solid transparent; background: none; padding: 5px 8px; border-radius: 8px; font-weight: 700; flex: none; }
+.sbtn:hover { border-color: var(--line); background: var(--panel2); }
+.sbtn.go { background: var(--red); color: #1a0d09; }
+.sbtn.next { background: var(--panel2); border-color: var(--line); }
+.sval { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.slbl { color: var(--muted); font-size: 12px; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.krark .big { font-family: var(--display); font-weight: 800; font-size: 24px; line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; min-width: 1.4ch; text-align: center; }
+.pip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); flex: none; }
+.pip b { font-family: var(--mono); min-width: 1.6ch; text-align: center; font-variant-numeric: tabular-nums; }
+.sym { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 12px; color: #fff; }
+.sym.R { background: #d4462b } .sym.U { background: #3b6fe0 } .sym.C { background: #7c8193 } .sym.A { background: linear-gradient(135deg, #d4462b 50%, #3b6fe0 50%) } .sym.T { background: #b8892e; color: #1a1206 }
+.spacer { flex: 1 0 8px; }
+.hist .sbtn.go { background: var(--red); color: #1a0d09; }
+
+/* ---------------- drawer: log, notes, settings, saved games */
+.drawer { position: fixed; z-index: 18; top: 0; right: 0; bottom: 0; width: min(400px, 100%); overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line);
+  padding-block: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px)); padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; align-content: start; gap: 16px; box-shadow: -12px 0 40px #000a; }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; }
+.drawer-head h2 { margin: 0; }
+.toggles { display: grid; gap: 8px; font-size: 14px; }
+.toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.note { display: flex; gap: 6px; } .note input, #drillReason { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 44vh; overflow-y: auto; font-size: 12px; }
+.log li { padding: 5px 7px; border-radius: 7px; background: var(--panel2); overflow-wrap: anywhere; }
+.log .meta { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.games { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12px; }
+.games li { padding: 5px 7px; border-bottom: 1px solid var(--line); }
+.savestate { font-size: 13px; color: var(--muted); margin: 0; } .savestate.ok { color: var(--good) } .savestate.warn { color: var(--warn) } .savestate.bad { color: var(--bad) }
+textarea, select { width: 100%; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; }
+#exportBox { font-family: var(--mono); font-size: 11px; height: 140px; }
+
+/* ---------------- mulligan drill (full screen) */
+.drillp { position: fixed; inset: 0; z-index: 16; overflow-y: auto; background: var(--bg);
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.drillp .inner { max-width: 1240px; margin: 0 auto; display: grid; gap: 10px; }
+.drill-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.drill-head h2 { margin: 0; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; font-size: 16px; }
+.drill-head .btn { margin-left: auto; }
+.drill-ctx { font-size: 16px; margin: 0; }
+.zone.drill-hand { --tile: clamp(96px, 12.5vw, 165px); gap: 10px; }
+#drillReason { width: 100%; }
+
+/* ---------------- sheets and pickers */
+.sheet { position: fixed; inset: 0; z-index: 20; background: #000a; display: grid; place-items: end center;
+  padding: 0 max(0px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(0px, env(safe-area-inset-left, 0px)); }
+@media (min-width: 700px) { .sheet { place-items: center } }
+.sheet-box { width: min(600px, 100%); max-height: 84vh; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 14px 16px 16px; gap: 10px; }
+@media (min-width: 700px) { .sheet-box { border-radius: 14px } }
+.sheet-head { display: flex; justify-content: space-between; gap: 8px; align-items: start }
+.sheet-head h3 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 700; text-wrap: balance; }
+.sheet-body { overflow-y: auto; min-height: 0 }
+.sheet-buttons { display: flex; flex-wrap: wrap; gap: 8px }
+.sheet-buttons button { border: 1px solid var(--line); background: var(--panel2); padding: 9px 13px; border-radius: 9px; font-weight: 700 }
+.sheet-buttons button.primary { background: var(--red); border-color: var(--red); color: #1a0d09 }
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.menu-grid .btn { text-align: left; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.keys dt kbd { font-family: var(--mono); background: var(--panel2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; font-size: 12px; }
+.keys dd { margin: 0; color: var(--muted); }
+.sheet-box:has(.keycols), .sheet-box:has(table.metrics) { width: min(940px, 100%); }
+.keycols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 28px; }
+.keycols .keys { gap: 5px 12px; }
+.keycols h4 { margin: 0 0 6px; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; color: var(--muted); }
+table.metrics { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+table.metrics th, table.metrics td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.metrics th:first-child, table.metrics td:first-child { text-align: left; }
+table.metrics th { color: var(--muted); font-weight: 700; font-size: 12px; }
+table.metrics tr.now td { color: var(--red); font-weight: 700; }
+.picklist { display: flex; flex-wrap: wrap; gap: 6px }
+.pick { display: flex; flex-direction: column; align-items: flex-start; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--line); border-left: 4px solid var(--artifact); background: var(--panel2); text-align: left }
+.pick small { font-family: var(--mono); color: var(--muted); font-size: 11px }
+.pick.sel { outline: 2px solid var(--red); outline-offset: 1px }
+.pick.mine { border-left-color: var(--creature) }
+.pick.pic { width: 92px; padding: 4px; gap: 3px; }
+.pick.pic .art { width: 100%; aspect-ratio: 488 / 680; border-radius: 5px; display: block; }
+.pick.pic span { font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+.orderlist { display: flex; flex-direction: column; gap: 6px; }
+.orderlist .info { margin: 0 0 4px; }
+.orow { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel2); }
+.orow .onum { font-family: var(--mono); font-weight: 700; width: 1.6em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.orow .othumb { width: 26px; aspect-ratio: 488 / 680; border-radius: 3px; }
+.orow .olab { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bigart { margin: 0 0 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bigart img { width: min(250px, 62vw); max-width: 100%; aspect-ratio: 488 / 680; border-radius: 11px; display: block; }
+.bigart figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+.form { display: grid; gap: 6px } .form label { font-weight: 700; font-size: 13px }
+.form input[type=number] { width: 8em; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; }
+.form input:not([type]) { padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); font: inherit; }
+.flipline { font-family: var(--mono) }
+#peek { position: fixed; z-index: 15; width: 280px; aspect-ratio: 488 / 680; border-radius: 13px; pointer-events: none; box-shadow: 0 10px 34px #000c; }
+
+/* ---------------- phones: tray stacks, piles shrink, status bar scrolls sideways */
+@media (max-width: 760px) {
+  .tray { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .piles { --tile: 50px; justify-content: space-between; }
+  .pile.cmd .cmdz { --tile: 50px; }
+  .arrow { display: none; }
+  .hand-row { grid-template-columns: minmax(0, 1fr); }
+  .zone.hand { --tile: 78px; }
+  .tchip.eng { display: none; }
+  .stackp { top: auto; bottom: 8px; position: fixed; bottom: calc(var(--trayH, 260px) + 8px); max-height: 42vh; }
+}
+@media (prefers-reduced-motion: reduce) { .card.pic, .zone.hand { transition: none; scroll-behavior: auto; } .zone.hand .card.pic:hover { transform: none; } }
+</style>
+
+<div class="app" id="app">
+  <section class="table" id="table" aria-label="Battlefield">
+    <div class="tbl-top">
+      <div class="chips">
+        <button class="tchip" data-act="keys" title="Keyboard shortcuts">⌨ Keybinds</button>
+        <span class="tchip"><b id="turnNo">Opening hand</b></span>
+        <span class="tchip eng" id="engines"></span>
+      </div>
+      <div class="oppbox" aria-label="Opponents: tap one to target burn and Brain Freeze">
+        <div class="opps" id="opps"></div>
+        <button class="mini" data-act="opp:life,-1" aria-label="Target loses 1 life">−1</button>
+        <button class="mini" data-act="opp:life,-5" aria-label="Target loses 5 life">−5</button>
+        <button class="mini" data-act="opp:life,1" aria-label="Target gains 1 life">+1</button>
+        <button class="mini" data-act="opp:lib,-3" aria-label="Mill target 3">mill 3</button>
+        <span class="tchip" title="Cards in the targeted opponent's hand, for Jeska's Will">hand <button class="mini" data-act="ohand:-1" aria-label="Smaller hand">−</button><b id="ohand" class="flipline">6</b><button class="mini" data-act="ohand:1" aria-label="Bigger hand">+</button></span>
+      </div>
+    </div>
+    <p class="banner" id="banner" hidden></p>
+
+    <div class="bf">
+      <div class="bf-row"><span class="rlabel">Creatures</span><div class="zone bfz" id="perms"></div></div>
+      <div class="bf-row"><span class="rlabel">Artifacts and enchantments</span><div class="zone bfz" id="arts"></div></div>
+      <div class="bf-row lands"><span class="rlabel">Lands</span><div class="zone bfz" id="lands"></div></div>
+    </div>
+
+    <section class="ov" id="mullBar" aria-label="Mulligan">
+      <h2>Opening hand</h2>
+      <p class="info" id="mullInfo"></p>
+      <div class="bar"><button class="btn primary" data-act="keep">Keep</button><button class="btn" data-act="mull">Mulligan</button><button class="btn quiet" data-act="newgame">Reshuffle</button><button class="btn" data-act="drill">Mulligan drill</button></div>
+    </section>
+
+    <section class="stackp" id="stackPanel" aria-label="Stack" hidden>
+      <h2>Stack <span class="n" id="stackCount">0</span> <span class="info">top resolves first · tap an item for options · R resolves</span></h2>
+      <div class="autos" id="autoBox" hidden></div>
+      <ol class="stack" id="stack"></ol>
+      <p class="info" id="stackMore" hidden></p>
+      <div class="bar" style="margin-top:8px"><button class="btn primary" data-act="resolve">Resolve top</button><button class="btn" data-act="resolveAll">Resolve all</button><button class="btn quiet" data-act="clearStack">Clear</button></div>
+    </section>
+  </section>
+
+  <section class="tray" aria-label="Hand and zones">
+    <div>
+      <div class="tray-head">
+        <button class="tlink" data-act="menu"><span class="k">⋮</span>Playtester actions</button>
+        <span class="tlink">Hand (<span id="handCount">0</span>)</span>
+      </div>
+      <div class="hand-row">
+        <button class="arrow" data-act="handL" aria-label="Scroll the hand left">‹</button>
+        <div class="zone hand" id="hand" data-zone="hand"></div>
+        <button class="arrow" data-act="handR" aria-label="Scroll the hand right">›</button>
+      </div>
+    </div>
+    <div class="piles">
+      <div class="pile"><span class="plabel">Library (<span id="libCount">0</span>)</span><button class="pslot back" data-act="pile:lib" aria-label="Library: draw, search or mill">MAGIC</button></div>
+      <div class="pile"><span class="plabel">Graveyard (<span id="gyCount">0</span>)</span><button class="pslot" id="gy" data-act="pile:gy" aria-label="Open the graveyard"></button></div>
+      <div class="pile"><span class="plabel">Exile (<span id="exCount">0</span>)</span><button class="pslot" id="ex" data-act="pile:ex" aria-label="Open exile"></button></div>
+      <div class="pile cmd"><span class="plabel">Command zone</span><div class="zone cmdz" id="cmdZone" data-zone="cmd"></div></div>
+    </div>
+  </section>
+
+  <footer class="status" aria-label="Game status">
+    <button class="sbtn" data-act="menu">☰ Game menu</button>
+    <span class="sgrp" title="Your life"><button class="mini" data-act="life:-1" aria-label="Lose 1 life">−</button>♥ <span class="sval" id="life">40</span><button class="mini" data-act="life:1" aria-label="Gain 1 life">+</button></span>
+    <span class="sgrp krark" aria-live="polite" title="Krark triggers per instant or sorcery"><button class="mini" data-act="k:-1" aria-label="One fewer Krark trigger">−</button><span class="big" id="krark">0</span><span class="slbl">Krark <span id="krarkHint">auto</span></span><button class="mini" data-act="k:1" aria-label="One more Krark trigger">+</button></span>
+    <span class="sgrp"><span class="slbl">storm</span><span class="sval" id="storm">0</span></span>
+    <span class="sgrp" aria-label="Mana pool: click adds one, right-click removes one">
+      <button class="pip" data-act="pool:R,1" data-alt="pool:R,-1" title="Red: click +1, right-click −1"><span class="sym R">R</span><b id="pR">0</b></button>
+      <button class="pip" data-act="pool:U,1" data-alt="pool:U,-1" title="Blue: click +1, right-click −1"><span class="sym U">U</span><b id="pU">0</b></button>
+      <button class="pip" data-act="pool:C,1" data-alt="pool:C,-1" title="Colourless: click +1, right-click −1"><span class="sym C">C</span><b id="pC">0</b></button>
+      <button class="pip" data-act="pool:A,1" data-alt="pool:A,-1" title="Any colour: click +1, right-click −1"><span class="sym A">★</span><b id="pA">0</b></button>
+    </span>
+    <span class="sgrp" title="Treasures: click +1, right-click −1"><button class="pip" data-act="treas:+" data-alt="treas:-"><span class="sym T">T</span><b id="treas">0</b></button><button class="mini" data-act="treas:use" title="Sacrifice one for any-colour mana">use</button></span>
+    <span class="sgrp"><span class="slbl">mana up</span><span class="sval" id="avail">0</span></span>
+    <span class="spacer"></span>
+    <span class="sgrp hist">
+      <button class="sbtn go" data-act="resolve" title="Resolve the top of the stack (R)" hidden>Resolve</button>
+      <button class="sbtn" data-act="undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button class="sbtn" data-act="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+    </span>
+    <span class="sgrp" id="playBar">
+      <button class="sbtn" data-act="loop" title="Record one iteration, then repeat it or mark it infinite">Start loop</button>
+      <button class="sbtn next" data-act="next">⟳ Next turn</button>
+    </span>
+    <button class="sbtn" data-act="log">☰ Log</button>
+  </footer>
+
+  <aside class="drawer" id="drawer" aria-label="Log and settings" hidden>
+    <div class="drawer-head"><h2>This turn's log</h2><button class="mini" data-act="log" aria-label="Close the log">✕</button></div>
+    <div class="note">
+      <input id="note" placeholder="Why this line? e.g. holding Jeska's Will for Sakashima" aria-label="Note for this turn">
+      <button class="btn" data-act="note">Add note</button>
+    </div>
+    <ol class="log" id="log"></ol>
+    <div>
+      <h2>Settings</h2>
+      <div class="toggles">
+        <label for="optHold"><input type="checkbox" id="optHold"> Hold priority after casting</label>
+        <label for="optAsk"><input type="checkbox" id="optAsk" checked> Ask me to order triggers</label>
+      </div>
+    </div>
+    <div>
+      <h2>Saved games</h2>
+      <p class="savestate" id="saveState">Connecting…</p>
+      <ul class="games" id="games"></ul>
+      <div class="bar" style="margin-top:8px"><button class="btn" data-act="export">Export this game</button><button class="btn quiet" data-act="newgame">New game</button></div>
+      <textarea id="exportBox" hidden aria-label="Game JSON" readonly></textarea>
+    </div>
+    <p class="info" style="margin:0">Card images © Wizards of the Coast, provided by Scryfall.</p>
+  </aside>
+
+  <section class="drillp" id="drillPanel" aria-label="Mulligan drill" hidden>
+    <div class="inner">
+      <div class="drill-head"><h2>Mulligan drill</h2><span class="info" id="drillStats"></span><button class="btn quiet" data-act="drillExit">Back to the game</button></div>
+      <p class="drill-ctx" id="drillCtx"></p>
+      <div class="zone drill-hand" id="drillHand"></div>
+      <p class="info" id="drillPrompt"></p>
+      <input id="drillReason" placeholder="Why? Optional, e.g. T1 Krark plus Jeska's Will" aria-label="Reason for this decision">
+      <div class="bar">
+        <button class="btn primary" id="drillKeep" data-act="drillKeep">Keep</button>
+        <button class="btn" id="drillMull" data-act="drillMull">Mulligan</button>
+        <button class="btn quiet" id="drillBack" data-act="drillBack" hidden>Back</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head"><h3 id="sheetTitle"></h3><button class="mini" id="sheetClose" aria-label="Close">✕</button></div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-buttons" id="sheetButtons"></div>
+  </div>
+</div>
+
+<img id="peek" alt="" hidden>
+<script>/*APP*/</script>

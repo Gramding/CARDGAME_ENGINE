@@ -1,0 +1,22 @@
+const { chromium } = require(process.env.PW || 'playwright');
+const PAGE = process.env.PAGE || 'file://' + require('path').resolve(__dirname, '../../site/index.html');
+(async () => {
+  const b = await chromium.launch((process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}));
+  const p = await b.newPage({ viewport: { width: 1400, height: 900 } }); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  p.on('framenavigated', f => console.log('NAVIGATED', f.url()));
+  await p.goto(PAGE); await p.waitForTimeout(300);
+  const ev = (f, a) => p.evaluate(f, a);
+  const sheet = () => ev(() => ({ open: !document.getElementById('sheet').hidden, title: document.getElementById('sheetTitle').textContent, sel: [...document.querySelectorAll('#sheetBody .pick')].map(x => (x.classList.contains('sel') ? '*' : '') + x.textContent.trim()) }));
+  const press = async l => { await ev(l => [...document.querySelectorAll('#sheetButtons button')].find(x => x.textContent.startsWith(l)).click(), l); await p.waitForTimeout(150); };
+  const clickPick = t => ev(t => [...document.querySelectorAll('#sheetBody .pick')].find(x => x.textContent.trim().startsWith(t)).click(), t);
+  await ev(() => { askOrder = false; newGame(); S.phase = 'play'; S.turn = 1; S.hand = []; S.gy = ['Rite of Flame', 'Lotus Petal', 'Ponder', 'Gamble', 'Island', 'Brain Freeze'];
+    S.bf = ['Underworld Breach', 'Mountain', 'Volcanic Island'].map(n => ({ uid: S.nextId++, name: n, tapped: false })); undoStack = []; render(); });
+  ev(() => zoneMenu('gy', 'Rite of Flame')); await p.waitForTimeout(150); await press('Escape'); await p.waitForTimeout(150);
+  await clickPick('Ponder'); await clickPick('Gamble'); await clickPick('Island'); await clickPick('Lotus Petal'); await clickPick('Brain Freeze'); await clickPick('Gamble');
+  await press('Exile them'); await p.waitForTimeout(300);
+  console.log('sheet', JSON.stringify(await sheet()), 'stack', await ev(() => S.stack.map(stackLabel).join(' / ')));
+  await ev(() => resolveAll()); await p.waitForTimeout(200);
+  console.log('exiled', await ev(() => S.ex.map(e => e.n).join(', ')), '| gy', await ev(() => S.gy.join(', ')), '| pool', await ev(() => poolStr()));
+  console.log('errors', errs);
+  await b.close();
+})();

@@ -1,0 +1,142 @@
+{
+  "games": 1000,
+  "jeska_turn2": [
+    {
+      "pilot": "fires Jeska's off one Krark",
+      "by_t2": 0.079,
+      "by_t3": 0.274,
+      "by_t4": 0.565,
+      "double_jeska_t2": 0.323,
+      "double_jeska_win_t2": 0.24458204334365324
+    },
+    {
+      "pilot": "greedy, holds Jeska's for 2+ triggers",
+      "by_t2": 0.013,
+      "by_t3": 0.222,
+      "by_t4": 0.643,
+      "double_jeska_t2": 0.02,
+      "double_jeska_win_t2": 0.65
+    },
+    {
+      "pilot": "lookahead (default)",
+      "by_t2": 0.095,
+      "by_t3": 0.315,
+      "by_t4": 0.674,
+      "double_jeska_t2": 0.256,
+      "double_jeska_win_t2": 0.37109375
+    }
+  ],
+  "breach_loop": [
+    {
+      "krark": false,
+      "win_that_turn": 0.543,
+      "methods": {
+        "None": 457,
+        "Brain Freeze mill": 543
+      }
+    },
+    {
+      "krark": true,
+      "win_that_turn": 0.949,
+      "methods": {
+        "None": 51,
+        "Brain Freeze mill": 949
+      }
+    }
+  ],
+  "twinflame_relic": [
+    {
+      "relic": false,
+      "win_that_turn": 0.096,
+      "methods": {
+        "None": 904,
+        "Vivi pings": 27,
+        "Twinflame Krark loop (hasty Krark army)": 20,
+        "Dualcaster Mage + Twinflame": 13,
+        "near-infinite chain (cast cap)": 9,
+        "Brain Freeze mill": 7,
+        "Combat damage": 7,
+        "Lightning Bolt": 5,
+        "Molten Duplication Krark loop (hasty Krark army)": 3,
+        "Twinflame/Molten hasty token army (combat)": 2,
+        "Electro": 2,
+        "Gut Shot": 1
+      }
+    },
+    {
+      "relic": true,
+      "win_that_turn": 0.688,
+      "methods": {
+        "Twinflame Krark loop (hasty Krark army)": 463,
+        "None": 312,
+        "Vivi pings": 77,
+        "Dualcaster Mage + Twinflame": 53,
+        "Molten Duplication Krark loop (hasty Krark army)": 29,
+        "Brain Freeze mill": 25,
+        "near-infinite chain (cast cap)": 13,
+        "Lightning Bolt": 10,
+        "Dualcaster Mage + Molten Duplication": 9,
+        "Electro": 3,
+        "Pinnacle Monk + Molten Duplication loop (infinite hasty Monks)": 2,
+        "Gut Shot": 2,
+        "Twinflame/Molten hasty token army (combat)": 1,
+        "Pinnacle Monk + Twinflame loop (infinite hasty Monks)": 1
+      }
+    }
+  ],
+  "birgi_cantrip": [
+    {
+      "krarks": 1,
+      "win_that_turn": 0.286,
+      "draws_p50": 5,
+      "draws_p90": 18,
+      "draw_15_plus": 0.133,
+      "casts_p50": 10,
+      "casts_p90": 51
+    },
+    {
+      "krarks": 2,
+      "win_that_turn": 0.543,
+      "draws_p50": 7,
+      "draws_p90": 22,
+      "draw_15_plus": 0.228,
+      "casts_p50": 23,
+      "casts_p90": 70
+    }
+  ],
+  "mulligan": [
+    {
+      "policy": "rule",
+      "games": 3000,
+      "by_t2": 0.0013333333333333333,
+      "by_t3": 0.015666666666666666,
+      "by_t4": 0.10133333333333333,
+      "kept_t1_krark_hand": 0.31733333333333336,
+      "krark_on_t1": 0.356,
+      "mulligans": {
+        "0": 0.5493333333333333,
+        "1": 0.26366666666666666,
+        "2": 0.14866666666666667,
+        "3": 0.03833333333333333
+      }
+    },
+    {
+      "policy": "model",
+      "games": 3000,
+      "by_t2": 0.0016666666666666668,
+      "by_t3": 0.024666666666666667,
+      "by_t4": 0.122,
+      "kept_t1_krark_hand": 0.448,
+      "krark_on_t1": 0.491,
+      "mulligans": {
+        "0": 0.239,
+        "1": 0.2896666666666667,
+        "2": 0.24633333333333332,
+        "3": 0.185,
+        "4": 0.03233333333333333,
+        "5": 0.005333333333333333,
+        "6": 0.0023333333333333335
+      }
+    }
+  ]
+}

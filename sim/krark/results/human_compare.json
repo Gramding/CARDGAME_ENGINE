@@ -1,0 +1,1443 @@
+[
+ {
+  "id": "gmvoxqlozdce3",
+  "kept": [
+   "Reverberate",
+   "Mystic Remora",
+   "Chrome Mox",
+   "Pyretic Ritual",
+   "Volcanic Island",
+   "Otawara, Soaring City"
+  ],
+  "mulligans": 2,
+  "undos": null,
+  "human_win_turn": null,
+  "human_method": null,
+  "outcome": "unfinished",
+  "note": null,
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Step Through",
+     "Mox Amber",
+     "Ashling",
+     "Riverglide Pathway",
+     "Polluted Delta",
+     "Molten Duplication",
+     "Underworld Breach"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.09,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Thundering Falls",
+     "Ashling",
+     "Minamo, School at Water's Edge",
+     "Dualcaster Mage",
+     "Brain Freeze",
+     "Pinnacle Monk",
+     "Fiery Islet"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.094,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Reverberate",
+     "Mystic Remora",
+     "Chrome Mox",
+     "Pyretic Ritual",
+     "Volcanic Island",
+     "Otawara, Soaring City",
+     "Twinflame"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.109,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Reverberate"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Step Through",
+     "Mox Amber",
+     "Ashling",
+     "Riverglide Pathway",
+     "Polluted Delta",
+     "Molten Duplication",
+     "Underworld Breach"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.09,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Thundering Falls",
+     "Ashling",
+     "Minamo, School at Water's Edge",
+     "Dualcaster Mage",
+     "Brain Freeze",
+     "Pinnacle Monk",
+     "Fiery Islet"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.094,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Reverberate",
+     "Mystic Remora",
+     "Chrome Mox",
+     "Pyretic Ritual",
+     "Volcanic Island",
+     "Otawara, Soaring City",
+     "Twinflame"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.109,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Reverberate"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "human_krark_turn": 1,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.007,
+   "3": 0.033,
+   "4": 0.107,
+   "5": 0.24
+  },
+  "sim_methods": {
+   "Vivi pings": 11,
+   "Molten Duplication Krark loop (hasty Krark army)": 5,
+   "Twinflame Krark loop (hasty Krark army)": 4,
+   "Dualcaster Mage + Twinflame": 4
+  },
+  "sim_win_by_human_turn": null
+ },
+ {
+  "id": "gmvoymrc45d2b",
+  "kept": [
+   "Mana Confluence",
+   "Lotus Petal",
+   "Gamble",
+   "Ancient Tomb"
+  ],
+  "mulligans": 4,
+  "undos": 1,
+  "human_win_turn": null,
+  "human_method": "Vivi pings",
+  "outcome": "recorded",
+  "note": "",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Deflecting Swat",
+     "Storm-Kiln Artist",
+     "Mystic Remora",
+     "Desperate Ritual",
+     "Lightning Bolt",
+     "Return the Favor",
+     "Minamo, School at Water's Edge"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.036,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Gamble",
+     "Fierce Guardianship",
+     "Mystical Tutor",
+     "Molten Duplication",
+     "Pinnacle Monk",
+     "Electro",
+     "Emergence Zone"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.033,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Fork",
+     "Wizard's Staff",
+     "Jeska's Will",
+     "Archmage Emeritus",
+     "Minamo, School at Water's Edge",
+     "Otawara, Soaring City",
+     "Step Through"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.227,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Step Through"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 3,
+    "size": 5,
+    "hand": [
+     "Underworld Breach",
+     "Fellwar Stone",
+     "Desperate Ritual",
+     "Tavern Scoundrel",
+     "Gitaxian Probe",
+     "Molten Duplication",
+     "Storm-Kiln Artist"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.011,
+    "bar": 0.033,
+    "sim_bottom": [
+     "Underworld Breach",
+     "Tavern Scoundrel"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 4,
+    "size": 4,
+    "hand": [
+     "Mana Confluence",
+     "Pyroblast",
+     "Lotus Petal",
+     "Gamble",
+     "Rite of Flame",
+     "Ancient Tomb",
+     "Emergence Zone"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.042,
+    "bar": 0.014,
+    "sim_bottom": [
+     "Pyroblast",
+     "Gamble",
+     "Rite of Flame"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Deflecting Swat",
+     "Storm-Kiln Artist",
+     "Mystic Remora",
+     "Desperate Ritual",
+     "Lightning Bolt",
+     "Return the Favor",
+     "Minamo, School at Water's Edge"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.036,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Gamble",
+     "Fierce Guardianship",
+     "Mystical Tutor",
+     "Molten Duplication",
+     "Pinnacle Monk",
+     "Electro",
+     "Emergence Zone"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.033,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Fork",
+     "Wizard's Staff",
+     "Jeska's Will",
+     "Archmage Emeritus",
+     "Minamo, School at Water's Edge",
+     "Otawara, Soaring City",
+     "Step Through"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.227,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Step Through"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 3,
+    "size": 5,
+    "hand": [
+     "Underworld Breach",
+     "Fellwar Stone",
+     "Desperate Ritual",
+     "Tavern Scoundrel",
+     "Gitaxian Probe",
+     "Molten Duplication",
+     "Storm-Kiln Artist"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.011,
+    "bar": 0.033,
+    "sim_bottom": [
+     "Underworld Breach",
+     "Tavern Scoundrel"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 4,
+    "size": 4,
+    "hand": [
+     "Mana Confluence",
+     "Pyroblast",
+     "Lotus Petal",
+     "Gamble",
+     "Rite of Flame",
+     "Ancient Tomb",
+     "Emergence Zone"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.042,
+    "bar": 0.014,
+    "sim_bottom": [
+     "Pyroblast",
+     "Gamble",
+     "Rite of Flame"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "human_krark_turn": 2,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.007,
+   "3": 0.007,
+   "4": 0.027,
+   "5": 0.1
+  },
+  "sim_methods": {
+   "Vivi pings": 7,
+   "Dualcaster Mage + Twinflame": 2,
+   "Dualcaster Mage + Molten Duplication": 2,
+   "Molten Duplication Krark loop (hasty Krark army)": 1
+  },
+  "sim_win_by_human_turn": null
+ },
+ {
+  "id": "gmvozckxecey0",
+  "kept": [
+   "Training Center",
+   "Mystical Tutor",
+   "Ral",
+   "Relic of Legends",
+   "Desperate Ritual",
+   "Strike It Rich"
+  ],
+  "mulligans": 2,
+  "undos": 2,
+  "human_win_turn": 4,
+  "human_method": "Dualcaster loop",
+  "outcome": "recorded",
+  "note": "Jeskas will from a gamble.",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Polluted Delta",
+     "Rite of Flame",
+     "Lightning Bolt",
+     "Jeska's Will",
+     "Electro",
+     "Mana Vault",
+     "Ponder"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.416,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Gut Shot",
+     "Thundering Falls",
+     "Steam Vents",
+     "Command Tower",
+     "City of Brass",
+     "Gitaxian Probe",
+     "Otawara, Soaring City"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.107,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Training Center",
+     "Mystical Tutor",
+     "Ral",
+     "Relic of Legends",
+     "Pyroblast",
+     "Desperate Ritual",
+     "Strike It Rich"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.051,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Pyroblast"
+    ],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Polluted Delta",
+     "Rite of Flame",
+     "Lightning Bolt",
+     "Jeska's Will",
+     "Electro",
+     "Mana Vault",
+     "Ponder"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.416,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Gut Shot",
+     "Thundering Falls",
+     "Steam Vents",
+     "Command Tower",
+     "City of Brass",
+     "Gitaxian Probe",
+     "Otawara, Soaring City"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.107,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Training Center",
+     "Mystical Tutor",
+     "Ral",
+     "Relic of Legends",
+     "Pyroblast",
+     "Desperate Ritual",
+     "Strike It Rich"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.051,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Pyroblast"
+    ],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 2,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.08,
+   "4": 0.22,
+   "5": 0.353
+  },
+  "sim_methods": {
+   "Vivi pings": 14,
+   "Twinflame Krark loop (hasty Krark army)": 13,
+   "Brain Freeze mill": 11,
+   "Molten Duplication Krark loop (hasty Krark army)": 7
+  },
+  "sim_win_by_human_turn": 0.22
+ },
+ {
+  "id": "gmvp1g9yb4x11",
+  "kept": [
+   "Treasonous Ogre",
+   "Mindbreak Trap",
+   "City of Brass",
+   "Crimson Wisps",
+   "Shivan Reef",
+   "Jeska's Will",
+   "Springleaf Drum"
+  ],
+  "mulligans": 0,
+  "undos": 5,
+  "human_win_turn": 3,
+  "human_method": "Burn copies",
+  "outcome": "recorded",
+  "note": "kept hand wich could go from troger to j will with one krark out this gives safety and allows for recasts if fail. ",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Treasonous Ogre",
+     "Mindbreak Trap",
+     "City of Brass",
+     "Crimson Wisps",
+     "Shivan Reef",
+     "Jeska's Will",
+     "Springleaf Drum"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.323,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Treasonous Ogre",
+     "Mindbreak Trap",
+     "City of Brass",
+     "Crimson Wisps",
+     "Shivan Reef",
+     "Jeska's Will",
+     "Springleaf Drum"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.323,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 2,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.007,
+   "3": 0.093,
+   "4": 0.313,
+   "5": 0.653
+  },
+  "sim_methods": {
+   "Vivi pings": 29,
+   "Brain Freeze mill": 20,
+   "Molten Duplication Krark loop (hasty Krark army)": 10,
+   "Twinflame Krark loop (hasty Krark army)": 9
+  },
+  "sim_win_by_human_turn": 0.093
+ },
+ {
+  "id": "gmvp20zdlha5l",
+  "kept": [
+   "City of Traitors",
+   "Gitaxian Probe",
+   "Deflecting Swat",
+   "Wooded Foothills",
+   "Misty Rainforest",
+   "Tavern Scoundrel",
+   "Pinnacle Monk"
+  ],
+  "mulligans": 0,
+  "undos": 1,
+  "human_win_turn": 4,
+  "human_method": "Krark 100+ (unrecorded)",
+  "outcome": "inferred",
+  "note": null,
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "City of Traitors",
+     "Gitaxian Probe",
+     "Deflecting Swat",
+     "Wooded Foothills",
+     "Misty Rainforest",
+     "Tavern Scoundrel",
+     "Pinnacle Monk"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.082,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "City of Traitors",
+     "Gitaxian Probe",
+     "Deflecting Swat",
+     "Wooded Foothills",
+     "Misty Rainforest",
+     "Tavern Scoundrel",
+     "Pinnacle Monk"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.082,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 2,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.007,
+   "4": 0.14,
+   "5": 0.36
+  },
+  "sim_methods": {
+   "Vivi pings": 16,
+   "Brain Freeze mill": 14,
+   "Twinflame Krark loop (hasty Krark army)": 9,
+   "Molten Duplication Krark loop (hasty Krark army)": 5
+  },
+  "sim_win_by_human_turn": 0.14
+ },
+ {
+  "id": "gmvp2fghxfky3",
+  "kept": [
+   "Harmonic Prodigy",
+   "Minamo, School at Water's Edge",
+   "Samut",
+   "Pyretic Ritual",
+   "Ral",
+   "Shivan Reef"
+  ],
+  "mulligans": 2,
+  "undos": 0,
+  "human_win_turn": null,
+  "human_method": null,
+  "outcome": "unfinished",
+  "note": null,
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Overmaster",
+     "Deflecting Swat",
+     "Rite of Flame",
+     "Springleaf Drum",
+     "Expedite",
+     "Flooded Strand",
+     "Snap"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.09,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Submerge",
+     "Underworld Breach",
+     "Arid Mesa",
+     "Expedite",
+     "Ashling",
+     "Fiery Islet",
+     "Overmaster"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.073,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Harmonic Prodigy",
+     "Minamo, School at Water's Edge",
+     "Samut",
+     "Snap",
+     "Pyretic Ritual",
+     "Ral",
+     "Shivan Reef"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.057,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Samut"
+    ],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Overmaster",
+     "Deflecting Swat",
+     "Rite of Flame",
+     "Springleaf Drum",
+     "Expedite",
+     "Flooded Strand",
+     "Snap"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.09,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Submerge",
+     "Underworld Breach",
+     "Arid Mesa",
+     "Expedite",
+     "Ashling",
+     "Fiery Islet",
+     "Overmaster"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.073,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Harmonic Prodigy",
+     "Minamo, School at Water's Edge",
+     "Samut",
+     "Snap",
+     "Pyretic Ritual",
+     "Ral",
+     "Shivan Reef"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.057,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Samut"
+    ],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 3,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.007,
+   "4": 0.067,
+   "5": 0.28
+  },
+  "sim_methods": {
+   "Vivi pings": 19,
+   "Combat damage": 4,
+   "Dualcaster Mage + Twinflame": 4,
+   "Twinflame Krark loop (hasty Krark army)": 4
+  },
+  "sim_win_by_human_turn": null
+ },
+ {
+  "id": "gmvp30r43elre",
+  "kept": [
+   "Lotus Petal",
+   "Vivi Ornitier",
+   "Gitaxian Probe",
+   "Lightning Bolt",
+   "Wooded Foothills",
+   "Polluted Delta",
+   "Brain Freeze"
+  ],
+  "mulligans": 0,
+  "undos": 7,
+  "human_win_turn": null,
+  "human_method": null,
+  "outcome": "unfinished",
+  "note": null,
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Lotus Petal",
+     "Vivi Ornitier",
+     "Gitaxian Probe",
+     "Lightning Bolt",
+     "Wooded Foothills",
+     "Polluted Delta",
+     "Brain Freeze"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.076,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Lotus Petal",
+     "Vivi Ornitier",
+     "Gitaxian Probe",
+     "Lightning Bolt",
+     "Wooded Foothills",
+     "Polluted Delta",
+     "Brain Freeze"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.076,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": true
+   }
+  ],
+  "human_krark_turn": 1,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.007,
+   "3": 0.007,
+   "4": 0.1,
+   "5": 0.4
+  },
+  "sim_methods": {
+   "Vivi pings": 23,
+   "Brain Freeze mill": 13,
+   "Dualcaster Mage + Twinflame": 8,
+   "Lightning Bolt": 4
+  },
+  "sim_win_by_human_turn": null
+ },
+ {
+  "id": "gmvp4a9e9hoiw",
+  "kept": [
+   "Simian Spirit Guide",
+   "Flooded Strand",
+   "Crimson Wisps",
+   "Relic of Legends",
+   "Training Center",
+   "Mogg Salvage"
+  ],
+  "mulligans": 2,
+  "undos": 2,
+  "human_win_turn": 5,
+  "human_method": "Krark 100+ (unfailable)",
+  "outcome": "recorded",
+  "note": "",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Desperate Ritual",
+     "Frantic Search",
+     "Wizard's Staff",
+     "Expedite",
+     "Gamble",
+     "Imperial Recruiter",
+     "Arcane Signet"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.021,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Frantic Search",
+     "Borne Upon a Wind",
+     "Crimson Wisps",
+     "Misty Rainforest",
+     "Bloodstained Mire",
+     "Otawara, Soaring City",
+     "Snap"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.134,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Simian Spirit Guide",
+     "Flooded Strand",
+     "Dualcaster Mage",
+     "Crimson Wisps",
+     "Relic of Legends",
+     "Training Center",
+     "Mogg Salvage"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.116,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Dualcaster Mage"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Desperate Ritual",
+     "Frantic Search",
+     "Wizard's Staff",
+     "Expedite",
+     "Gamble",
+     "Imperial Recruiter",
+     "Arcane Signet"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.021,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Frantic Search",
+     "Borne Upon a Wind",
+     "Crimson Wisps",
+     "Misty Rainforest",
+     "Bloodstained Mire",
+     "Otawara, Soaring City",
+     "Snap"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.134,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Simian Spirit Guide",
+     "Flooded Strand",
+     "Dualcaster Mage",
+     "Crimson Wisps",
+     "Relic of Legends",
+     "Training Center",
+     "Mogg Salvage"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.116,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Dualcaster Mage"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "human_krark_turn": 1,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.007,
+   "4": 0.067,
+   "5": 0.273
+  },
+  "sim_methods": {
+   "Vivi pings": 14,
+   "Twinflame Krark loop (hasty Krark army)": 8,
+   "Molten Duplication Krark loop (hasty Krark army)": 6,
+   "Dualcaster Mage + Molten Duplication": 3
+  },
+  "sim_win_by_human_turn": 0.273
+ },
+ {
+  "id": "gmvp50atdc7ng",
+  "kept": [
+   "Arid Mesa",
+   "Harmonic Prodigy",
+   "Ancient Tomb",
+   "Expedite",
+   "Ral",
+   "Sink into Stupor",
+   "Bloodstained Mire"
+  ],
+  "mulligans": 0,
+  "undos": 28,
+  "human_win_turn": 4,
+  "human_method": "Dualcaster loop",
+  "outcome": "recorded",
+  "note": "",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Arid Mesa",
+     "Harmonic Prodigy",
+     "Ancient Tomb",
+     "Expedite",
+     "Ral",
+     "Sink into Stupor",
+     "Bloodstained Mire"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.088,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Arid Mesa",
+     "Harmonic Prodigy",
+     "Ancient Tomb",
+     "Expedite",
+     "Ral",
+     "Sink into Stupor",
+     "Bloodstained Mire"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.088,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 3,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0,
+   "4": 0.173,
+   "5": 0.44
+  },
+  "sim_methods": {
+   "Vivi pings": 23,
+   "Dualcaster Mage + Twinflame": 10,
+   "Twinflame Krark loop (hasty Krark army)": 10,
+   "Dualcaster Mage + Molten Duplication": 6
+  },
+  "sim_win_by_human_turn": 0.173
+ },
+ {
+  "id": "gmvp5954v29p0",
+  "kept": [
+   "Simian Spirit Guide",
+   "Harmonic Prodigy",
+   "Fierce Guardianship",
+   "Fiery Islet",
+   "Bloodstained Mire"
+  ],
+  "mulligans": 3,
+  "undos": 1,
+  "human_win_turn": 5,
+  "human_method": "Krark 100+ (unfailable)",
+  "outcome": "recorded",
+  "note": "Reached 240 Krark triggers on turn 5.",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Electro",
+     "Impulse",
+     "Fellwar Stone",
+     "Phyrexian Metamorph",
+     "Mystic Remora",
+     "Otawara, Soaring City",
+     "Thundering Falls"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.091,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Polluted Delta",
+     "Birgi",
+     "Brain Freeze",
+     "City of Brass",
+     "Mana Confluence",
+     "Ponder",
+     "Frantic Search"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.184,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Might of the Meek",
+     "City of Brass",
+     "Mogg Salvage",
+     "Submerge",
+     "Wizard's Staff",
+     "Riverglide Pathway",
+     "Stifle"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.051,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Stifle"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 3,
+    "size": 5,
+    "hand": [
+     "Simian Spirit Guide",
+     "Harmonic Prodigy",
+     "Fierce Guardianship",
+     "Treasonous Ogre",
+     "Fiery Islet",
+     "Lightning Bolt",
+     "Bloodstained Mire"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.058,
+    "bar": 0.033,
+    "sim_bottom": [
+     "Fierce Guardianship",
+     "Treasonous Ogre"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Electro",
+     "Impulse",
+     "Fellwar Stone",
+     "Phyrexian Metamorph",
+     "Mystic Remora",
+     "Otawara, Soaring City",
+     "Thundering Falls"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.091,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 1,
+    "size": 7,
+    "hand": [
+     "Polluted Delta",
+     "Birgi",
+     "Brain Freeze",
+     "City of Brass",
+     "Mana Confluence",
+     "Ponder",
+     "Frantic Search"
+    ],
+    "human": "mull",
+    "sim": "keep",
+    "value": 0.184,
+    "bar": 0.095,
+    "sim_bottom": [],
+    "t1_krark": false
+   },
+   {
+    "step": 2,
+    "size": 6,
+    "hand": [
+     "Might of the Meek",
+     "City of Brass",
+     "Mogg Salvage",
+     "Submerge",
+     "Wizard's Staff",
+     "Riverglide Pathway",
+     "Stifle"
+    ],
+    "human": "mull",
+    "sim": "mull",
+    "value": 0.051,
+    "bar": 0.065,
+    "sim_bottom": [
+     "Stifle"
+    ],
+    "t1_krark": false
+   },
+   {
+    "step": 3,
+    "size": 5,
+    "hand": [
+     "Simian Spirit Guide",
+     "Harmonic Prodigy",
+     "Fierce Guardianship",
+     "Treasonous Ogre",
+     "Fiery Islet",
+     "Lightning Bolt",
+     "Bloodstained Mire"
+    ],
+    "human": "keep",
+    "sim": "keep",
+    "value": 0.058,
+    "bar": 0.033,
+    "sim_bottom": [
+     "Fierce Guardianship",
+     "Treasonous Ogre"
+    ],
+    "t1_krark": true
+   }
+  ],
+  "human_krark_turn": 1,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.013,
+   "4": 0.06,
+   "5": 0.233
+  },
+  "sim_methods": {
+   "Vivi pings": 23,
+   "Molten Duplication Krark loop (hasty Krark army)": 3,
+   "Twinflame Krark loop (hasty Krark army)": 3,
+   "Brain Freeze mill": 3
+  },
+  "sim_win_by_human_turn": 0.233
+ },
+ {
+  "id": "gmvp5lv6jfc3d",
+  "kept": [
+   "Mountain",
+   "Ral",
+   "Wooded Foothills",
+   "Force of Will",
+   "Expedite",
+   "Mana Vault",
+   "Fiery Islet"
+  ],
+  "mulligans": 0,
+  "undos": 2,
+  "human_win_turn": 4,
+  "human_method": "Krark 100+ (unfailable)",
+  "outcome": "recorded",
+  "note": "Reached 200 Krark triggers on turn 4.",
+  "mull_on_draw": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Mountain",
+     "Ral",
+     "Wooded Foothills",
+     "Force of Will",
+     "Expedite",
+     "Mana Vault",
+     "Fiery Islet"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.098,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "mull_on_play": [
+   {
+    "step": 0,
+    "size": 7,
+    "hand": [
+     "Mountain",
+     "Ral",
+     "Wooded Foothills",
+     "Force of Will",
+     "Expedite",
+     "Mana Vault",
+     "Fiery Islet"
+    ],
+    "human": "keep",
+    "sim": "mull",
+    "value": 0.098,
+    "bar": 0.122,
+    "sim_bottom": [],
+    "t1_krark": false
+   }
+  ],
+  "human_krark_turn": 3,
+  "sim_games": 150,
+  "sim_win_by": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.007,
+   "4": 0.087,
+   "5": 0.36
+  },
+  "sim_methods": {
+   "Vivi pings": 15,
+   "Brain Freeze mill": 8,
+   "Dualcaster Mage + Twinflame": 7,
+   "Dualcaster Mage + Molten Duplication": 6
+  },
+  "sim_win_by_human_turn": 0.087
+ }
+]

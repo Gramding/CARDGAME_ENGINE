@@ -1,0 +1,12 @@
+{
+  "name": "cardgame-engine",
+  "private": true,
+  "description": "MTG playtester and Krark simulator",
+  "scripts": {
+    "build": "python3 build.py",
+    "test": "bash tests/run.sh"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

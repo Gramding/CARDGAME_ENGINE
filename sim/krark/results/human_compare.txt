@@ -1,0 +1,37 @@
+gmvoxqlozdce3 kept 6 human None None unfinished | sim by T3/T4/T5 0.033 0.107 0.24
+    step 0 size 7 human mull sim mull v 0.09 bar 0.122 t1K False
+    step 1 size 7 human mull sim mull v 0.094 bar 0.095 t1K False
+    step 2 size 6 human keep sim keep v 0.109 bar 0.065 t1K True
+gmvoymrc45d2b kept 4 human None Vivi pings recorded | sim by T3/T4/T5 0.007 0.027 0.1
+    step 0 size 7 human mull sim mull v 0.036 bar 0.122 t1K False
+    step 1 size 7 human mull sim mull v 0.033 bar 0.095 t1K False
+    step 2 size 6 human mull sim keep v 0.227 bar 0.065 t1K False
+    step 3 size 5 human mull sim mull v 0.011 bar 0.033 t1K False
+    step 4 size 4 human keep sim keep v 0.042 bar 0.014 t1K True
+gmvozckxecey0 kept 6 human 4 Dualcaster loop recorded | sim by T3/T4/T5 0.08 0.22 0.353
+    step 0 size 7 human mull sim keep v 0.416 bar 0.122 t1K True
+    step 1 size 7 human mull sim keep v 0.107 bar 0.095 t1K False
+    step 2 size 6 human keep sim mull v 0.051 bar 0.065 t1K False
+gmvp1g9yb4x11 kept 7 human 3 Burn copies recorded | sim by T3/T4/T5 0.093 0.313 0.653
+    step 0 size 7 human keep sim keep v 0.323 bar 0.122 t1K False
+gmvp20zdlha5l kept 7 human 4 Krark 100+ (unrecorded) inferred | sim by T3/T4/T5 0.007 0.14 0.36
+    step 0 size 7 human keep sim mull v 0.082 bar 0.122 t1K False
+gmvp2fghxfky3 kept 6 human None None unfinished | sim by T3/T4/T5 0.007 0.067 0.28
+    step 0 size 7 human mull sim mull v 0.09 bar 0.122 t1K True
+    step 1 size 7 human mull sim mull v 0.073 bar 0.095 t1K False
+    step 2 size 6 human keep sim mull v 0.057 bar 0.065 t1K False
+gmvp30r43elre kept 7 human None None unfinished | sim by T3/T4/T5 0.007 0.1 0.4
+    step 0 size 7 human keep sim mull v 0.076 bar 0.122 t1K True
+gmvp4a9e9hoiw kept 6 human 5 Krark 100+ (unfailable) recorded | sim by T3/T4/T5 0.007 0.067 0.273
+    step 0 size 7 human mull sim mull v 0.021 bar 0.122 t1K False
+    step 1 size 7 human mull sim keep v 0.134 bar 0.095 t1K False
+    step 2 size 6 human keep sim keep v 0.116 bar 0.065 t1K True
+gmvp50atdc7ng kept 7 human 4 Dualcaster loop recorded | sim by T3/T4/T5 0.0 0.173 0.44
+    step 0 size 7 human keep sim mull v 0.088 bar 0.122 t1K False
+gmvp5954v29p0 kept 5 human 5 Krark 100+ (unfailable) recorded | sim by T3/T4/T5 0.013 0.06 0.233
+    step 0 size 7 human mull sim mull v 0.091 bar 0.122 t1K False
+    step 1 size 7 human mull sim keep v 0.184 bar 0.095 t1K False
+    step 2 size 6 human mull sim mull v 0.051 bar 0.065 t1K False
+    step 3 size 5 human keep sim keep v 0.058 bar 0.033 t1K True
+gmvp5lv6jfc3d kept 7 human 4 Krark 100+ (unfailable) recorded | sim by T3/T4/T5 0.007 0.087 0.36
+    step 0 size 7 human keep sim mull v 0.098 bar 0.122 t1K False

@@ -1,0 +1,147 @@
+
+######## sample game 1 (seat 3, mulligans 3)
+T1 | --- turn 1: hand = Mountain, Light Up the Stage, Fellwar Stone, Crimson Wisps, Fiery Islet, Overmaster
+T1 | play Fiery Islet
+T1 | lookahead: greedy 0.10, allin 0.10, wait 0.10, engine_first 0.10 -> greedy
+T1 | cast Crimson Wisps
+T2 | --- turn 2: hand = Mountain, Light Up the Stage, Fellwar Stone, Overmaster, Relic of Legends, Fierce Guardianship
+T2 | play Mountain
+T2 | lookahead: greedy 0.12, allin 0.12, wait 0.12, engine_first 0.12 -> greedy
+T2 | cast Krark (cmd)
+T3 | --- turn 3: hand = Light Up the Stage, Fellwar Stone, Overmaster, Relic of Legends, Fierce Guardianship, Impulse
+T3 | lookahead: greedy 0.13, allin 0.13, wait 0.13, engine_first 0.13 -> greedy
+T3 | cast Overmaster
+T3 |   Krark x1: 1 copies, original resolves
+T3 | play Mana Confluence
+T3 | cast Impulse
+T3 |   Krark x1: 0 copies, Impulse back to hand
+T4 | --- turn 4: hand = Light Up the Stage, Fellwar Stone, Relic of Legends, Fierce Guardianship, Underworld Breach, Impulse, Ancient Tomb
+T4 | play Ancient Tomb
+T4 | lookahead: greedy 0.14, allin 0.14, wait 0.14, engine_first 0.14, breach 0.14 -> greedy
+T4 | cast Sakashima of a Thousand Faces (cmd)
+T4 |   Sakashima of a Thousand Faces enters as Krark
+*** no win by turn 4; opponents at [40, 40, 40]
+
+######## sample game 2 (seat 4, mulligans 0)
+T0 | Gemstone Caverns starts in play (exile Thundering Falls)
+T1 | --- turn 1: hand = Light Up the Stage, Vivi Ornitier, Birgi, Command Tower, Fiery Islet, Harmonic Prodigy
+T1 | play Command Tower
+T1 | lookahead: greedy 0.11, allin 0.11, wait 0.11, engine_first 0.11 -> greedy
+T1 | cast Krark (cmd)
+T2 | --- turn 2: hand = Light Up the Stage, Vivi Ornitier, Birgi, Fiery Islet, Harmonic Prodigy, Steam Vents
+T2 | play Fiery Islet
+T2 | lookahead: greedy 0.14, allin 0.14, wait 0.14, engine_first 0.14 -> greedy
+T2 | cast Harmonic Prodigy
+T3 | --- turn 3: hand = Light Up the Stage, Vivi Ornitier, Birgi, Steam Vents, Submerge
+T3 | play Steam Vents
+T3 | lookahead: greedy 0.25, allin 0.25, wait 0.64, engine_first 0.25 -> wait
+T3 | cast Sakashima of a Thousand Faces (cmd)
+T3 |   Sakashima of a Thousand Faces enters as Krark
+T4 | --- turn 4: hand = Light Up the Stage, Vivi Ornitier, Birgi, Submerge, Lightning Bolt
+T4 | lookahead: greedy 1.00, allin 1.00, wait 0.18, engine_first 1.00 -> greedy
+T4 | cast Birgi
+T4 | cast Lightning Bolt
+T4 |   Krark x4: 2 copies, Lightning Bolt back to hand
+T4 | cast Lightning Bolt
+T4 |   Krark x4: 1 copies, Lightning Bolt back to hand
+T4 | cast Lightning Bolt
+T4 |   Krark x4: 2 copies, Lightning Bolt back to hand
+T4 | cast Lightning Bolt
+T4 |   Krark x4: 2 copies, Lightning Bolt back to hand
+T4 | cast Lightning Bolt
+T4 |   Krark x4: 4 copies, original resolves
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 1 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 3 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 2 copies, Submerge back to hand
+T4 | cast Submerge
+T4 |   Krark x4: 4 copies, original resolves
+T4 | cast Light Up the Stage
+T4 |   Krark x4: 0 copies, Light Up the Stage back to hand
+T4 | cast Light Up the Stage
+T4 |   Krark x4: 1 copies, Light Up the Stage back to hand
+T4 | play City of Brass
+T4 | cast Vivi Ornitier
+T4 | cast Light Up the Stage
+T4 |   Krark x4: 2 copies, Light Up the Stage back to hand
+T4 | cast Light Up the Stage
+T4 |   Krark x4: 3 copies, Light Up the Stage back to hand
+T4 | cast Wizard's Staff (exile)
+T4 |   equip Wizard's Staff -> Krark
+T4 | cast Brain Freeze (exile)
+T4 |   Krark x5: 2 copies, Brain Freeze back to hand
+T4 | cast Jeska's Will (exile)
+T4 |   Krark x5: 3 copies, Jeska's Will back to hand
+T4 | cast Treasonous Ogre (exile)
+T4 | cast Jeska's Will
+T4 |   Krark x5: 2 copies, Jeska's Will back to hand
+T4 | cast Lotus Petal (exile)
+T4 | cast Brain Freeze
+T4 | *** WIN on turn 4 via Brain Freeze mill (storm 44)
+
+######## sample game 3 (seat 2, mulligans 2)
+T1 | --- turn 1: hand = Fellwar Stone, Steam Vents, Otawara, Lotus Petal, Mana Vault, Mountain, Volcanic Island
+T1 | play Steam Vents
+T1 | cast Lotus Petal
+T1 | cast Krark (cmd)
+T2 | --- turn 2: hand = Fellwar Stone, Otawara, Mana Vault, Mountain, Volcanic Island, Shivan Reef
+T2 | play Volcanic Island
+T2 | cast Mana Vault
+T2 | cast Sakashima of a Thousand Faces (cmd)
+T2 |   Sakashima of a Thousand Faces enters as Krark
+T3 | --- turn 3: hand = Fellwar Stone, Otawara, Mountain, Shivan Reef, An Offer You Can't Refuse
+T3 | play Shivan Reef
+T3 | lookahead: greedy 0.10, allin 0.10, wait 0.10, engine_first 0.10 -> greedy
+T3 | cast Fellwar Stone
+T4 | --- turn 4: hand = Otawara, Mountain, An Offer You Can't Refuse, Phyrexian Metamorph
+T4 | play Otawara
+T4 | lookahead: greedy 0.10, allin 0.10, wait 0.10, engine_first 0.10 -> greedy
+T4 | cast Phyrexian Metamorph
+T4 |   Phyrexian Metamorph enters as Krark
+*** no win by turn 4; opponents at [40, 40, 40]
