@@ -24,7 +24,7 @@ const PAGE = process.env.PAGE || 'file://' + require('path').resolve(__dirname, 
 
   // 2. Ral: win flip, transform, +1 reduces cost, -8 exiles castable cards
   await setup(['Rite of Flame', 'Desperate Ritual', 'Pyretic Ritual'], ['Ral, Monsoon Mage // Ral, Leyline Prodigy', 'Mountain', 'Mountain', 'Volcanic Island']);
-  await ev(() => { Math.random = () => 0.1; });
+  await ev(() => { S.rng = null; Math.random = () => 0.1; });
   ev(() => cast('Rite of Flame', 'hand')); await p.waitForTimeout(150);
   console.log('2 stack', await ev(() => S.stack.map(stackLabel).join(' / ')));
   ev(() => resolveTop()); await p.waitForTimeout(150); sh = await sheet(); console.log('  prompt:', sh.title); await press('Transform');
@@ -56,7 +56,7 @@ const PAGE = process.env.PAGE || 'file://' + require('path').resolve(__dirname, 
 
   // 4. cast Rite repeatedly with Krark: alternate flips
   await setup(['Rite of Flame'], ['Krark, the Thumbless', 'Mountain', 'Mountain', 'Mountain']);
-  await ev(() => { let i = 0; const seq = [0.1, 0.9, 0.1, 0.1, 0.9, 0.1, 0.1]; Math.random = () => seq[i++ % seq.length]; });
+  await ev(() => { S.rng = null; let i = 0; const seq = [0.1, 0.9, 0.1, 0.1, 0.9, 0.1, 0.1]; Math.random = () => seq[i++ % seq.length]; });
   ev(() => castRepeatMenu('Rite of Flame')); await p.waitForTimeout(100); await ev(() => { document.getElementById('repN').value = 6; }); await press('Go'); await p.waitForTimeout(300);
   console.log('4 repeat:', await ev(() => document.getElementById('banner').textContent));
   console.log('  undo stack depth', await ev(() => undoStack.length), 'hand', await ev(() => S.hand.join(',')), 'gy', await ev(() => S.gy.join(',')));

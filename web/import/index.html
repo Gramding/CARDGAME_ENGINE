@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deck Import · Cardgame Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&family=Saira+Condensed:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="./import.css">
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <a class="back" href="../">← Playtester</a>
+    <h1>Deck import</h1>
+    <p class="lede">Paste a Commander list. The importer looks every card up on Scryfall, checks which ones the engine can already play, and writes a request you can send to Claude for the rest.</p>
+  </div>
+</header>
+
+<main class="inner">
+  <section class="panel" aria-labelledby="pasteTitle">
+    <h2 id="pasteTitle">1 · Decklist</h2>
+    <label for="deckName" class="lbl">Deck name (optional)</label>
+    <input id="deckName" placeholder="e.g. Kefka Storm">
+    <label for="deckText" class="lbl">Cards, one per line (Moxfield or Arena export)</label>
+    <textarea id="deckText" rows="14" spellcheck="false" placeholder="1 Kefka, Court Mage // Kefka, Ruler of Ruin&#10;&#10;1 Displacer Kitten&#10;1 Gilded Drake&#10;…"></textarea>
+    <div class="row">
+      <button class="btn primary" id="check">Check deck</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="result" aria-labelledby="resultTitle" hidden>
+    <h2 id="resultTitle">2 · Coverage</h2>
+    <div class="summary" id="summary"></div>
+    <div id="warnings"></div>
+    <div id="gaps"></div>
+    <div class="filters" role="tablist" aria-label="Show cards">
+      <button class="chip on" data-filter="all">All</button>
+      <button class="chip" data-filter="script">Needs scripting</button>
+      <button class="chip" data-filter="data">Data only</button>
+      <button class="chip" data-filter="modeled">Modeled</button>
+    </div>
+    <ul class="grid" id="grid"></ul>
+  </section>
+
+  <section class="panel" id="promptBox" aria-labelledby="promptTitle" hidden>
+    <h2 id="promptTitle">3 · Request for Claude</h2>
+    <p class="hint">Copy this and send it to Claude. It has the engine work needed first and every missing card's cost, type and full rules text.</p>
+    <div class="row">
+      <button class="btn primary" id="copy">Copy request</button>
+      <button class="btn" id="download">Download .md</button>
+      <span class="status" id="copied" role="status"></span>
+    </div>
+    <textarea id="prompt" rows="18" readonly spellcheck="false" aria-label="Request text"></textarea>
+  </section>
+
+  <p class="credit">Card data and images from <a href="https://scryfall.com" rel="noopener" target="_blank">Scryfall</a>. Card text and images © Wizards of the Coast. Unofficial fan content.</p>
+</main>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

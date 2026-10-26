@@ -25,7 +25,7 @@ const PAGE = process.env.PAGE || 'file://' + require('path').resolve(__dirname, 
   console.log('  life', await ev(() => S.life), 'prodigy', await ev(() => { const q = S.bf.find(x => x.name === 'Harmonic Prodigy'); return q ? power(q) + '/' + toughness(q) + ' dmg ' + dmgOf(q) : 'dead'; }));
   // 3. Bolt own Electro with Krark: copies keep the target, Electro dies, his trigger pays X
   await setup(['Lightning Bolt'], ['Krark, the Thumbless', 'Electro, Assaulting Battery', 'Mountain', 'Mountain', 'Mountain', 'Volcanic Island']);
-  await ev(() => { Math.random = () => 0.1; });
+  await ev(() => { S.rng = null; Math.random = () => 0.1; });
   ev(() => handMenu('Lightning Bolt')); await p.waitForTimeout(100); await press('Cast'); await p.waitForTimeout(100);
   await pick('Electro'); await press('Target it'); await p.waitForTimeout(150);
   sh = await sheet(); if (sh.open) { console.log('  order:', sh.title); await press('Put them'); }

@@ -1792,9 +1792,9 @@ function renderGames(snap) {
 async function actionsMenu() {
   const g = document.createElement("div"); g.className = "menu-grid";
   const items = S.phase === "mull"
-    ? [["keep", "Keep this hand"], ["mull", "Mulligan"], ["newgame", "Reshuffle new game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["log", "Log and settings"]]
+    ? [["keep", "Keep this hand"], ["mull", "Mulligan"], ["newgame", "Reshuffle new game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["log", "Log and settings"], ["importdeck", "Import a deck"]]
     : [["draw", "Draw a card"], ["search", "Search library"], ["mill", "Mill 1 (self)"], ["loop", S.loop ? "End loop" : "Start loop"], ["poolclear", "Empty mana pool"],
-       ["notefocus", "Add a note"], ["end", "End game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["export", "Export this game"], ["newgame", "New game"], ["log", "Log and settings"]];
+       ["notefocus", "Add a note"], ["end", "End game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["export", "Export this game"], ["newgame", "New game"], ["log", "Log and settings"], ["importdeck", "Import a deck"]];
   g.innerHTML = items.map(([a, l]) => `<button class="btn" data-act="${a}">${esc(l)}</button>`).join("");
   await openSheet(S.phase === "mull" ? "Opening hand" : `Turn ${S.turn} · playtester actions`, g, [["Close", null]]);
 }
@@ -2005,6 +2005,7 @@ function runAct(act) {
   }
   if (act === "menu") return actionsMenu();
   if (act === "keys") return keysSheet();
+  if (act === "importdeck") { location.href = "./import/"; return; }
   if (act === "log") return drawerToggle();
   if (act === "notefocus") { drawerToggle(true); $("note").focus(); return; }
   if (act === "poolclear") { snapshotUndo(); S.pool = { R: 0, U: 0, C: 0, A: 0 }; if (S.inf) { S.inf.R = S.inf.U = S.inf.C = S.inf.A = false; } log("pool emptied"); render(); return; }

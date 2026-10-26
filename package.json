@@ -3,10 +3,17 @@
   "private": true,
   "description": "MTG playtester and Krark simulator",
   "scripts": {
-    "build": "python3 build.py",
-    "test": "bash tests/run.sh"
+    "build": "vite build && python3 build.py",
+    "dev": "vite",
+    "typecheck": "tsc",
+    "test:unit": "vitest run",
+    "test": "vitest run && bash tests/run.sh"
   },
   "devDependencies": {
-    "playwright": "1.56.1"
+    "@types/node": "22.15.21",
+    "playwright": "1.56.1",
+    "typescript": "5.9.3",
+    "vite": "6.4.5",
+    "vitest": "3.2.7"
   }
 }
