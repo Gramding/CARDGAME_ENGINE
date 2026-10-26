@@ -1456,6 +1456,14 @@ async function grantFlashback(source) {
   toast(`${short(n)} has flashback this turn. Open your graveyard to cast it.`, "win");
 }
 function hasFlashback(n) { return !!((C[n] || {}).fb || (S.fb && S.fb[n] === S.turn)); }
+/* what a cEDH opponent's random discard is, by card type: roughly the make-up of a cEDH hand */
+const OPP_HAND = [["instant", 30], ["land", 26], ["creature", 14], ["artifact", 13], ["sorcery", 11], ["enchantment", 5], ["planeswalker", 1]];
+function randomOppDiscard() {
+  if (S.oppHand <= 0) return "";   // the tracked hand is empty
+  let r = rnd() * OPP_HAND.reduce((a, [, w]) => a + w, 0);
+  for (const [k, w] of OPP_HAND) { if (r < w) return k; r -= w; }
+  return "land";
+}
 /* Kefka enters or attacks: each player discards a card, then you draw one for each card type among them */
 async function kefkaDiscards(it) {
   const box = document.createElement("div"); box.className = "form";
@@ -1464,11 +1472,12 @@ async function kefkaDiscards(it) {
     const lab = document.createElement("p"); lab.className = "info"; lab.style.margin = "0"; lab.textContent = "You discard:";
     const pf = pickFrom(S.hand, S.hand[S.hand.length - 1]); box.append(lab, pf.list); mine = pf;
   }
-  const last = S.kefkaOpp || [];
   const opts = ["", ...Object.keys(KIND_WORD)];
+  const rolled = aliveOpps().map(() => randomOppDiscard());
   const alive = aliveOpps();
   const sel = document.createElement("div"); sel.className = "form";
-  sel.innerHTML = alive.map(i => `<label for="kd${i}">Opponent ${i + 1} discards a</label><select id="kd${i}">${opts.map(k => `<option value="${k}" ${(last[i] || "") === k ? "selected" : ""}>${k ? KIND_WORD[k] : "nothing (empty hand)"}</option>`).join("")}</select>`).join("");
+  sel.innerHTML = `<p class="info" style="margin:0">Opponents' discards are rolled at random from a typical cEDH hand. Change any of them if you know better.</p>` +
+    alive.map((i, j) => `<label for="kd${i}">Opponent ${i + 1} discards a</label><select id="kd${i}">${opts.map(k => `<option value="${k}" ${rolled[j] === k ? "selected" : ""}>${k ? KIND_WORD[k] : "nothing (empty hand)"}</option>`).join("")}</select>`).join("");
   box.append(sel);
   pendingArt = KEFKA;
   await openSheet(`Kefka ${it.attack ? "attacks" : "enters"}: each player discards a card`, box, [["Discard and draw", "go", "primary"]]);
