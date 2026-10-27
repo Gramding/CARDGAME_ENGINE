@@ -140,6 +140,16 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .sbtn.next { background: var(--panel2); border-color: var(--line); }
 .sval { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
 .slbl { color: var(--muted); font-size: 12px; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.zview { display: grid; gap: 10px; }
+.zsearch { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: inherit; font: inherit; }
+.zsec h4 { margin: 4px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.zsec h4 small { font-weight: 400; }
+.zsec .picklist { margin: 0; }
+.zrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.zview .zrow .pick, .zview .zrow .pick.pic { flex: 1 1 180px; width: auto; margin: 0; display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; text-align: left; }
+.zrow .pick img.art { width: 44px; height: 61px; object-fit: cover; object-position: top; border-radius: 4px; flex: none; position: static; }
+.zrow .pick small { margin-left: auto; }
+.zrow .zact { white-space: nowrap; }
 .krark .big { font-family: var(--display); font-weight: 800; font-size: 24px; line-height: 1; color: var(--red); font-variant-numeric: tabular-nums; min-width: 1.4ch; text-align: center; }
 .pip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 3px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); flex: none; }
 .pip b { font-family: var(--mono); min-width: 1.6ch; text-align: center; font-variant-numeric: tabular-nums; }
@@ -304,7 +314,7 @@ table.metrics tr.now td { color: var(--red); font-weight: 700; }
     <button class="sbtn" data-act="menu">☰ Game menu</button>
     <span class="sgrp" title="Your life"><button class="mini" data-act="life:-1" aria-label="Lose 1 life">−</button>♥ <span class="sval" id="life">40</span><button class="mini" data-act="life:1" aria-label="Gain 1 life">+</button></span>
     <span class="sgrp krark" aria-live="polite" title="Krark triggers per instant or sorcery"><button class="mini" data-act="k:-1" aria-label="One fewer Krark trigger">−</button><span class="big" id="krark">0</span><span class="slbl">Krark <span id="krarkHint">auto</span></span><button class="mini" data-act="k:1" aria-label="One more Krark trigger">+</button></span>
-    <span class="sgrp"><span class="slbl">storm</span><span class="sval" id="storm">0</span></span>
+    <span class="sgrp"><span class="slbl">storm</span><span class="sval" id="storm">0</span><span class="slbl" id="ralIS" title="Instants and sorceries you cast this turn. Ral, Leyline Prodigy enters with 2 loyalty plus this many." hidden>Ral <b class="sval" id="ralN">0</b></span></span>
     <span class="sgrp" id="poolPips" aria-label="Mana pool: click adds one, right-click removes one"></span>
     <span class="sgrp" title="Treasures: click +1, right-click −1"><button class="pip" data-act="treas:+" data-alt="treas:-"><span class="sym T">T</span><b id="treas">0</b></button><button class="mini" data-act="treas:use" title="Sacrifice one for any-colour mana">use</button></span>
     <span class="sgrp"><span class="slbl">mana up</span><span class="sval" id="avail">0</span></span>

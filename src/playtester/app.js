@@ -1414,8 +1414,15 @@ async function pickPerm(title, perms, okLabel, oppLabel, art) {
   return v === "go" ? tgt : v === "opp" ? "opp" : null;
 }
 async function pickName(title, names, pre, okLabel, art) {
-  const pf = pickFrom(names, pre);
   pendingArt = art;
+  if (names.length > 12) {   // long lists (tutors, Consultation, Chord) get grouping and a search box
+    let picked = pre === undefined ? null : pre;
+    const box = groupedPicker(names, n => { picked = n; });
+    if (picked) box.querySelectorAll(".pick").forEach(b => { if (b.dataset.q === picked.toLowerCase()) b.classList.add("sel"); });
+    const v = await openSheet(title, box, [[okLabel || "Take it", "go", "primary"], ["Cancel", null]]);
+    return v === "go" ? picked : null;
+  }
+  const pf = pickFrom(names, pre);
   const v = await openSheet(title, pf.list, [[okLabel || "Take it", "go", "primary"], ["Cancel", null]]);
   return v === "go" ? pf.get() : null;
 }
@@ -2082,7 +2089,7 @@ async function tutor(source) {
   const pool = S.lib.filter(ok).sort((a, b) => short(a).localeCompare(short(b)));
   if (!pool.length) { log("tutor", { c: short(source), found: "nothing", note: what.trim() || undefined, life: c.life ? -c.life : undefined }); shuffle(S.lib); toast(`${short(source)} found nothing${what}.`, "warn"); return; }
   let picked = null;
-  const list = cardList(pool, (n, i, b) => { picked = n; [...list.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); });
+  const list = groupedPicker(pool, n => { picked = n; });
   pendingArt = source;
   const v = await openSheet(`${short(source)}: search your library${what}${toTop ? " (goes on top)" : ""}`, list, [["Take it", "take", "primary"], ["Cancel", null]]);
   if (v !== "take" || !picked) { if (c.life) log("tutor", { c: short(source), found: "nothing", life: -c.life }); return; }
@@ -2120,16 +2127,7 @@ async function handMenu(name) {
   const c = C[name];
   const btns = [];
   if (c.k === "land") btns.push(["Play land", "land", "primary"]);
-  else if (parseCost(c.c).phy) {
-    const ph = parseCost(c.c), rest = c.c.replace(/\{[RU]\/P\}/, "");
-    btns.push([`${S.stack.length ? "Respond" : "Cast"}: ${rest ? rest + " + " : ""}2 life`, "castlife", "primary"], [`${S.stack.length ? "Respond" : "Cast"} paying ${rest}${ph.phy}`, "cast"]);
-  }
-  else btns.push([S.stack.length ? "Cast in response" : "Cast", "cast", "primary"]);
-  if (c.free_if || (c.free_cmdr && commanderOut())) btns.push(["Cast free (alt cost)", "free"]);
-  if (name === "Light Up the Stage" && S.turnStats.damage > 0) btns.push(["Spectacle {R}", "spectacle"]);
-  const pi = pitchInfo(name);
-  if (pi && S.hand.filter(n => n !== name && cardColors(n).includes("U")).length >= pi.n) btns.push([pi.label, "pitch"]);
-  if (name === "Snuff Out" && hasSwamp()) btns.push(["Pay 4 life (you control a Swamp)", "snuff"]);
+  else btns.push(...payButtons(name));
   if (c.mdfc) btns.push(["Play as land", "mdfcland"]);
   if (name === BIRGI) btns.push([`Cast ${HARNFEL} {4}{R}`, "harnfel"]);
   if (isSpell(name)) btns.push(["Cast repeatedly…", "repeat"]);
@@ -2141,28 +2139,12 @@ async function handMenu(name) {
   btns.push(["Discard", "discard"], ["Exile", "exile"], ["To library top", "top"], ["Cancel", null]);
   const v = await openSheet(`${name}  ${c.c ? "· " + c.c : ""}`, null, btns);
   if (!v) return;
-  if (v === "cast") return cast(name, "hand");
+  if (v.startsWith("pay:")) return castWith(name, "hand", v.slice(4));
   if (v === "harnfel") return cast(name, "hand", { cost: "4R", alt: "back face", back: true });
-  if (v === "castlife") return cast(name, "hand", { phyLife: true });
   if (v === "repeat") return castRepeatMenu(name);
-  if (v === "free") return cast(name, "hand", { free: true, alt: "alt cost" });
   snapshotUndo();
   if (v === "land" || v === "mdfcland") {
     await playLand(name, "hand", v === "mdfcland");
-  } else if (v === "spectacle") {
-    dropSnapshot(); return cast(name, "hand", { cost: "R", alt: "spectacle" });
-  } else if (v === "pitch") {
-    const blues = S.hand.filter(n => n !== name && cardColors(n).includes("U"));
-    const idx = await multiPick(`${short(name)}: ${pi.label.toLowerCase()}`, blues, pi.n, blues.length === pi.n ? blues.map((b, i) => i) : [0], true, name, "Exile and cast");
-    if (!idx) { dropSnapshot(); return; }
-    const gone = idx.map(i => blues[i]);
-    for (const x of gone) { S.hand.splice(S.hand.indexOf(x), 1); S.ex.push({ n: x }); }
-    if (pi.life) S.life -= pi.life;
-    log("pitch", { c: short(name), exiled: gone.map(short), life: pi.life ? -pi.life : undefined, evoke: pi.evoke || undefined });
-    return cast(name, "hand", { free: true, alt: (pi.evoke ? "evoked, " : "") + "pitched " + gone.map(short).join(" and "), noSnap: true, evoke: pi.evoke });   // pitch and cast undo as one step
-  } else if (v === "snuff") {
-    S.life -= 4; log("alt cost", { c: "Snuff Out", life: -4 });
-    return cast(name, "hand", { free: true, alt: "4 life", noSnap: true });
   } else if (v === "channel") {
     const legends = S.bf.filter(p => (C[ident(p)] || {}).leg && isCreatureP(p)).length;
     const g = Math.max(0, 3 - legends);
@@ -2202,6 +2184,41 @@ async function handMenu(name) {
     log(v, { c: short(name) });
   }
   render(); saveLocal();
+}
+/* every way to pay for a spell, the same from your hand, exile, the graveyard or the command zone:
+   mana, Phyrexian life, free alternative costs, spectacle, pitching blue cards, Snuff Out's life */
+function payButtons(name, tail = "") {
+  const c = C[name], verb = S.stack.length ? "Respond" : "Cast", out = [];
+  const ph = parseCost(c.c);
+  if (ph.phy) {
+    const rest = c.c.replace(/\{[WUBRG]\/P\}/, "");
+    out.push([`${verb}${tail}: ${rest ? rest + " + " : ""}2 life`, "pay:castlife", "primary"], [`${verb} paying ${rest}${ph.phy}`, "pay:cast"]);
+  } else out.push([(S.stack.length ? "Cast in response" : "Cast") + tail, "pay:cast", "primary"]);
+  if (c.free_if || (c.free_cmdr && commanderOut())) out.push(["Cast free (alt cost)", "pay:free"]);
+  if (name === "Light Up the Stage" && S.turnStats.damage > 0) out.push(["Spectacle {R}", "pay:spectacle"]);
+  const pi = pitchInfo(name);
+  if (pi && S.hand.filter(n => n !== name && cardColors(n).includes("U")).length >= pi.n) out.push([pi.label, "pay:pitch"]);
+  if (name === "Snuff Out" && hasSwamp()) out.push(["Pay 4 life (you control a Swamp)", "pay:snuff"]);
+  return out;
+}
+async function castWith(name, zone, mode) {
+  if (mode === "cast") return cast(name, zone);
+  if (mode === "castlife") return cast(name, zone, { phyLife: true });
+  if (mode === "free") return cast(name, zone, { free: true, alt: "alt cost" });
+  if (mode === "spectacle") return cast(name, zone, { cost: "R", alt: "spectacle" });
+  snapshotUndo();   // the life or the pitched cards and the cast undo as one step
+  if (mode === "pitch") {
+    const pi = pitchInfo(name), blues = S.hand.filter(n => n !== name && cardColors(n).includes("U"));
+    const idx = await multiPick(`${short(name)}: ${pi.label.toLowerCase()}`, blues, pi.n, blues.length === pi.n ? blues.map((b, i) => i) : [0], true, name, "Exile and cast");
+    if (!idx) { dropSnapshot(); return; }
+    const gone = idx.map(i => blues[i]);
+    for (const x of gone) { S.hand.splice(S.hand.indexOf(x), 1); S.ex.push({ n: x }); }
+    if (pi.life) S.life -= pi.life;
+    log("pitch", { c: short(name), exiled: gone.map(short), life: pi.life ? -pi.life : undefined, evoke: pi.evoke || undefined });
+    return cast(name, zone, { free: true, alt: (pi.evoke ? "evoked, " : "") + "pitched " + gone.map(short).join(" and "), noSnap: true, evoke: pi.evoke });
+  }
+  if (mode === "snuff") { S.life -= 4; log("alt cost", { c: "Snuff Out", life: -4 }); return cast(name, zone, { free: true, alt: "4 life", noSnap: true }); }
+  dropSnapshot();
 }
 /* free-to-cast costs that exile blue cards from your hand */
 function pitchInfo(name) {
@@ -2490,22 +2507,28 @@ async function zoneMenu(zone, name) {
     if (onBf(BREACH) && c.k !== "land") { if (parseCost(c.c).phy) btns.push(["Escape for 2 life", "escapelife", "primary"]); btns.push(["Escape (Breach)" + (parseCost(c.c).phy ? " paying mana" : ""), "escape", parseCost(c.c).phy ? "" : "primary"]); }
     if (hasFlashback(name)) btns.push([`Flashback {${c.fb || c.c || "0"}}`, "flashback", "primary"]);
     if (name === "Nature's Rhythm") btns.push(["Harmonize {X}{G}{G}{G}{G}", "harmonize", "primary"]);
-    if (S.ywill === S.turn) btns.unshift(c.k === "land" ? ["Play land (Yawgmoth's Will)", "ywland", "primary"] : ["Cast (Yawgmoth's Will)", "ywcast", "primary"]);
+    if (S.ywill === S.turn) btns.unshift(...(c.k === "land" ? [["Play land (Yawgmoth's Will)", "ywland", "primary"]] : payButtons(name, " (Yawgmoth's Will)").map(b => [b[0], "yw" + b[1], b[2]])));
     btns.push(["Return to hand", "hand"], ["Exile", "exile"], ["Cancel", null]);
   } else if (zone === "ex") {
     const e = S.ex.find(x => x.n === name);
     if (e && e.given) btns.push(["Take control of it again", "takeback", "primary"]);
-    if (e && e.play) btns.push([c.k === "land" ? "Play land" : e.free ? "Cast free (Ral −8)" : "Cast", "play", "primary"]);
+    if (e && e.play) { if (c.k === "land" || e.free) btns.push([c.k === "land" ? "Play land" : "Cast free (Ral −8)", "play", "primary"]); else btns.push(...payButtons(name)); }
     btns.push(["To hand", "hand"], ["Cancel", null]);
   } else if (zone === "cmd") {
     btns.push([`Cast (tax ${2 * S.cmd[name]})`, "cast", "primary"], ["Cancel", null]);
   }
   const v = await openSheet(`${name} · ${zone === "gy" ? "graveyard" : zone === "ex" ? "exile" : "command zone"}`, null, btns);
   if (!v) return;
+  return zoneAct(zone, name, v);
+}
+/* what a zone action does; the zone menus and the exile and graveyard viewers share it */
+async function zoneAct(zone, name, v) {
+  const c = C[name];
+  if (v.startsWith("ywpay:")) return castWith(name, "gycast", v.slice(6));
+  if (v.startsWith("pay:")) return castWith(name, zone === "gy" ? "gycast" : "exile", v.slice(4));
   if (v === "escape" || v === "escapelife") { if (S.gy.length - 1 < 3) { toast("Escape needs three other cards in the graveyard.", "bad"); return; } return cast(name, "escape", v === "escapelife" ? { phyLife: true } : {}); }
   if (v === "flashback") return cast(name, "flashback");
   if (v === "harmonize") return cast(name, "harmonize");
-  if (v === "ywcast") return cast(name, "gycast");
   if (v === "ywland") { snapshotUndo(); await playLand(name, "gy"); render(); saveLocal(); return; }
   if (v === "takeback") {
     snapshotUndo();
@@ -2526,16 +2549,46 @@ async function zoneMenu(zone, name) {
 }
 function castPermanentFrom(name, zone) { return cast(name, zone); }
 
+/* group card names by their main type, for long lists */
+const TYPE_ORDER = [["creature", "Creatures"], ["instant", "Instants"], ["sorcery", "Sorceries"], ["artifact", "Artifacts"], ["enchantment", "Enchantments"], ["planeswalker", "Planeswalkers"], ["land", "Lands"]];
+function groupedPicker(names, onPick) {
+  const wrap = document.createElement("div"); wrap.className = "zview";
+  const search = document.createElement("input"); search.className = "zsearch"; search.placeholder = `Search ${names.length} card${names.length === 1 ? "" : "s"}`; search.setAttribute("aria-label", "Search these cards");
+  wrap.append(search);
+  const uniq = [...new Set(names)].sort((a, b) => short(a).localeCompare(short(b)));
+  const kindOf = n => { const k = (C[n] || {}).k; return TYPE_ORDER.some(t => t[0] === k) ? k : "other"; };
+  for (const [k, title] of [...TYPE_ORDER, ["other", "Other"]]) {
+    const list = uniq.filter(n => kindOf(n) === k); if (!list.length) continue;
+    const sec = document.createElement("section"); sec.className = "zsec";
+    sec.innerHTML = `<h4>${title} <small>${list.reduce((a, n) => a + names.filter(x => x === n).length, 0)}</small></h4>`;
+    const pl = cardList(list, (n, i, b) => { wrap.querySelectorAll(".pick").forEach(x => x.classList.remove("sel")); b.classList.add("sel"); onPick(n); });
+    [...pl.children].forEach((b, i) => { b.dataset.q = list[i].toLowerCase(); });
+    sec.append(pl); wrap.append(sec);
+  }
+  search.oninput = () => {
+    const q = search.value.trim().toLowerCase();
+    wrap.querySelectorAll(".pick").forEach(b => { b.hidden = !!q && !b.dataset.q.includes(q); });
+    wrap.querySelectorAll(".zsec").forEach(sc => { sc.hidden = ![...sc.querySelectorAll(".pick")].some(b => !b.hidden); });
+    const vis = [...wrap.querySelectorAll(".pick:not([hidden])")], exact = vis.find(b => b.dataset.q === q);
+    if (q && (exact || vis.length === 1)) (exact || vis[0]).click();   // an exact name or a single match is picked
+  };
+  search.onkeydown = ev => { if (ev.key === "Enter") { const b = wrap.querySelector(".pick:not([hidden])"); if (b) b.click(); } };
+  setTimeout(() => search.focus(), 0);
+  return wrap;
+}
 async function librarySearch() {
-  const pool = [...S.lib].sort((a, b) => short(a).localeCompare(short(b)));
   let picked = null;
-  const list = cardList(pool, (n, i, b) => { picked = n; [...list.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); });
-  const v = await openSheet(`Library (${S.lib.length} cards)`, list, [["To hand", "hand", "primary"], ["To top", "top"], ["Cancel", null]]);
-  if (!v || !picked) return;
+  const box = groupedPicker(S.lib, n => { picked = n; });
+  const v = await openSheet(`Search your library (${S.lib.length} cards)`, box, [["To hand", "hand", "primary"], ["To top", "top"], ["To bottom", "bottom"], ["Onto the battlefield", "bf"], ["To graveyard", "gy"], ["To exile", "ex"], ["Cancel", null]]);
+  if (!v) return;
+  if (!picked) { toast("Pick a card first.", "warn"); return; }
   snapshotUndo();
   S.lib.splice(S.lib.indexOf(picked), 1); shuffle(S.lib);
-  if (v === "hand") S.hand.push(picked); else S.lib.unshift(picked);
-  log("search", { found: short(picked), to: v }); render(); saveLocal();
+  if (v === "hand") S.hand.push(picked); else if (v === "top") S.lib.unshift(picked); else if (v === "bottom") S.lib.push(picked);
+  else if (v === "gy") toGy(picked); else if (v === "ex") S.ex.push({ n: picked });
+  log("search", { found: short(picked), to: v });
+  if (v === "bf") { if ((C[picked] || {}).k === "land") enterLand(picked); else await enterBf(picked); }
+  render(); saveLocal();
 }
 /* ------------------------------------------------------------------ automatic win checks
    Deterministic wins the page recognises by itself, next to the Krark 100+ cap. Each one asks once per game. */
@@ -2781,6 +2834,9 @@ function render() {
   $("turnNo").textContent = S.phase === "mull" ? "Opening hand" : `Turn ${S.turn}`;
   const inf = S.inf || {}, show = (k, v) => inf[k] ? "∞" : v;
   $("storm").textContent = show("storm", S.storm);
+  // Ral counts instants and sorceries you cast this turn (his loyalty when he flips), which differs from storm
+  const ralLive = S.hand.includes(RAL) || S.stack.some(x => x.name === RAL) || S.bf.some(p => p.name === RAL && !p.flipped);
+  $("ralIS").hidden = !ralLive; $("ralN").textContent = S.turnStats.instsorc || 0;
   const auto = krarkAuto();
   $("krark").textContent = krarkRaw() >= KRARK_CAP ? KRARK_CAP + "+" : krarkTriggers();
   $("krarkHint").textContent = S.kDelta ? `auto ${auto} ${S.kDelta > 0 ? "+" : "−"} ${Math.abs(S.kDelta)}` : "auto";
@@ -2909,12 +2965,66 @@ async function pileMenu(z) {
     if (v) runAct(v);
     return;
   }
+  return zoneViewer(z);
+}
+/* exile and graveyard: what you can play right now on top with its buttons, then the rest, and a search box */
+async function zoneViewer(z) {
   const names = z === "gy" ? [...S.gy].reverse() : S.ex.map(e => e.n).reverse();
   if (!names.length) { toast(z === "gy" ? "Your graveyard is empty." : "Nothing in exile."); return; }
-  let picked = null;
-  const list = cardList(names, n => { picked = n; closeSheet("go"); }, z === "ex" ? n => { const e = S.ex.find(x => x.n === n) || {}; return short(n) + (e.play ? " ▶" : "") + (e.given ? " (an opponent has it)" : ""); } : z === "gy" ? n => short(n) + (hasFlashback(n) ? " · flashback" : "") : null);
-  const v = await openSheet(`${z === "gy" ? "Graveyard" : "Exile"} · ${names.length} card${names.length === 1 ? "" : "s"} · tap one for options`, list, [["Close", null]]);
-  if (v === "go" && picked) { pendingArt = picked; zoneMenu(z, picked); }
+  const actions = n => {   // [label, action] buttons for a card you can play from here now
+    const c = C[n] || {};
+    if (z === "ex") {
+      const e = S.ex.find(x => x.n === n) || {};
+      if (e.given) return [["Take it back", "takeback"]];
+      if (!e.play) return [];
+      return c.k === "land" ? [["Play", "play"]] : e.free ? [["Cast free", "play"]] : payButtons(n).map(b => [b[0], b[1]]);
+    }
+    const out = [];
+    if (S.ywill === S.turn) out.push(...(c.k === "land" ? [["Play (Yawgmoth's Will)", "ywland"]] : payButtons(n, " (Yawgmoth's Will)").map(b => [b[0], "yw" + b[1]])));
+    if (onBf(BREACH) && c.k !== "land" && S.gy.length > 3) out.push(["Escape", "escape"]);
+    if (hasFlashback(n)) out.push([`Flashback {${c.fb || c.c || "0"}}`, "flashback"]);
+    if (n === "Nature's Rhythm") out.push(["Harmonize", "harmonize"]);
+    return out;
+  };
+  const rows = [...new Set(names)].map(n => ({ n, acts: actions(n), count: names.filter(x => x === n).length, given: z === "ex" && (S.ex.find(x => x.n === n) || {}).given }));
+  const groups = z === "ex"
+    ? [["You can play these now", rows.filter(r => r.acts.length && !r.given)], ["An opponent controls these", rows.filter(r => r.given)], ["Exiled", rows.filter(r => !r.acts.length)]]
+    : [["You can cast these now", rows.filter(r => r.acts.length)], ["In the graveyard", rows.filter(r => !r.acts.length)]];
+  const wrap = document.createElement("div"); wrap.className = "zview";
+  const search = document.createElement("input"); search.placeholder = `Search ${names.length} card${names.length === 1 ? "" : "s"}`; search.setAttribute("aria-label", "Search these cards"); search.className = "zsearch";
+  wrap.append(search);
+  for (const [title, list] of groups) {
+    if (!list.length) continue;
+    const sec = document.createElement("section"); sec.className = "zsec";
+    sec.innerHTML = `<h4>${esc(title)} <small>${list.length}</small></h4>`;
+    for (const r of list) {
+      const row = document.createElement("div"); row.className = "zrow"; row.dataset.n = r.n.toLowerCase();
+      row.innerHTML = `<button class="pick ${kindClass(r.n)} ${hasArt(r.n) ? "pic" : ""}" data-zopen="${esc(r.n)}">${artTag(r.n)}<span>${esc(short(r.n))}${r.count > 1 ? ` ×${r.count}` : ""}</span><small>${esc((C[r.n] || {}).c || "")}</small></button>` +
+        r.acts.map(([label, act]) => `<button class="mini zact" data-zn="${esc(r.n)}" data-zact="${esc(act)}">${esc(label)}</button>`).join("");
+      sec.append(row);
+    }
+    wrap.append(sec);
+  }
+  search.oninput = () => {
+    const q = search.value.trim().toLowerCase();
+    wrap.querySelectorAll(".zrow").forEach(r => { r.hidden = !!q && !r.dataset.n.includes(q); });
+    wrap.querySelectorAll(".zsec").forEach(sc => { sc.hidden = ![...sc.querySelectorAll(".zrow")].some(r => !r.hidden); });
+  };
+  search.onkeydown = ev => { if (ev.key === "Enter") { const b = wrap.querySelector(".zrow:not([hidden]) [data-zopen]"); if (b) b.click(); } };
+  let chosen = null;
+  wrap.onclick = ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.zopen) chosen = { n: b.dataset.zopen, act: null };
+    else if (b.dataset.zact) chosen = { n: b.dataset.zn, act: b.dataset.zact };
+    else return;
+    closeSheet("go");
+  };
+  setTimeout(() => search.focus(), 0);
+  const v = await openSheet(`${z === "gy" ? "Graveyard" : "Exile"} · ${names.length} card${names.length === 1 ? "" : "s"}`, wrap, [["Close", null]]);
+  if (v !== "go" || !chosen) return;
+  pendingArt = chosen.n;
+  if (chosen.act) return zoneAct(z, chosen.n, chosen.act);
+  return zoneMenu(z, chosen.n);
 }
 function drawerToggle(open) {
   const d = $("drawer"); d.hidden = open === undefined ? !d.hidden : !open;
