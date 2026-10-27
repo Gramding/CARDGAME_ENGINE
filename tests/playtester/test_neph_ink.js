@@ -81,6 +81,21 @@ const { table, check } = require('./lib');
   check('A Sol Ring token', await state(() => S.bf.some(p => p.token && ident(p) === 'Sol Ring')));
   check('Flash Photography offers flashback {4UU}', await state(() => hasFlashback('Flash Photography') && C['Flash Photography'].fb === '4UU'));
 
+  // Flash Photography can copy any permanent, yours or an opponent's
+  await setup(['Flash Photography', 'Flash Photography'], ['Tropical Island', 'Tundra', 'Volcanic Island', 'Underground Sea', 'Taiga', 'Bayou', 'Savannah', 'Scrubland', 'Smothering Tithe']);
+  await go(() => cast('Flash Photography', 'hand'));
+  check('Its target list has lands and enchantments too', await state(() => ['Tropical Island', 'Smothering Tithe'].every(n => [...document.querySelectorAll('#sheetBody .pick')].some(b => b.textContent.startsWith(n)))));
+  await pick("An opponent's permanent"); await press('Target it'); await resolve();
+  check("An opponent's target asks which card it is", (await T.title()).includes("copy which of your opponent's permanents"));
+  await ev(() => { document.getElementById('ocName').value = 'mana vault'; }); await press('Make the token');
+  check("A known card: a Mana Vault token for you", await state(() => S.bf.some(p => p.token && p.name === 'Mana Vault')));
+  await ev(() => { S.pool.U = 2; S.pool.C = 2; });
+  await go(() => cast('Flash Photography', 'hand')); await pick("An opponent's permanent"); await press('Target it'); await resolve();
+  await ev(() => { document.getElementById('ocName').value = 'Dockside Extortionist'; document.getElementById('ocKind').value = 'creature'; document.getElementById('ocPT').value = '1/2'; }); await press('Make the token');
+  check('An unknown card becomes a plain 1/2 creature token', await state(() => { const t = S.bf.find(p => p.name === 'Dockside Extortionist'); return t && t.token && isCreatureP(t) && power(t) === 1 && toughness(t) === 2; }));
+  await ev(() => { const s = JSON.stringify(S); undo(); redo(); });
+  check('The unknown card survives undo and redo', await state(() => !!C['Dockside Extortionist'] && S.bf.some(p => p.name === 'Dockside Extortionist')));
+
   // Croaking Counterpart: a 1/1 copy
   await setup(['Croaking Counterpart'], ['Faeburrow Elder', 'Tropical Island', 'Taiga', 'Bayou']);
   await go(() => cast('Croaking Counterpart', 'hand')); await pick('Faeburrow'); await press('Target it'); await resolve();

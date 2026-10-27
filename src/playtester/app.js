@@ -1827,6 +1827,27 @@ async function chooseCreature(name, kind) {
   await openSheet(`${short(name)}: target which ${kind}?`, wrap, [["Target it", "go", "primary"]]);
   return picked.t;
 }
+/* name an opponent's permanent for a copy effect: any card the page knows, or a new one with its type */
+async function nameOppPermanent(source, kind) {
+  const known = Object.values(C).filter(c => !c.token && (kind !== "creature" || c.k === "creature")).map(c => c.n).sort();
+  const box = document.createElement("div"); box.className = "form";
+  const kinds = kind === "creature" ? ["creature"] : ["creature", "artifact", "enchantment", "land", "planeswalker"];
+  box.innerHTML = `<label for="ocName">Which card? Start typing</label><input id="ocName" list="ocList" autocomplete="off" placeholder="e.g. ${kind === "creature" ? "Dockside Extortionist" : "Sol Ring"}">
+    <datalist id="ocList">${known.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+    <p class="info" style="margin:0">For a card the playtester doesn't know, set its type${kind === "creature" ? "" : " (and power and toughness for a creature)"}:</p>
+    <label for="ocKind">Type</label><select id="ocKind">${kinds.map(k => `<option>${k}</option>`).join("")}</select>
+    <label for="ocPT">Power/toughness</label><input id="ocPT" value="2/2" inputmode="numeric">`;
+  pendingArt = source;
+  const v = await openSheet(`${short(source)}: copy which of your opponent's ${kind === "creature" ? "creatures" : "permanents"}?`, box, [["Make the token", "go", "primary"], ["Skip", null]]);
+  const n = v === "go" && $("ocName").value.trim();
+  if (!n) return null;
+  const hit = known.find(x => x.toLowerCase() === n.toLowerCase());
+  if (hit) return hit;
+  const k = $("ocKind").value, pt = ($("ocPT").value.match(/(\d+)\s*\/\s*(\d+)/) || [0, 2, 2]).slice(1).map(Number);
+  const card = { n, s: n, k, c: "", manual: 1, ...(k === "creature" ? { pt } : {}) };
+  C[n] = card; S.extraCards = { ...(S.extraCards || {}), [n]: card };   // kept with the game so undo and reloads know it
+  return n;
+}
 function tokenCopy(p, extra = {}) {
   const t = { uid: S.nextId++, name: ident(p), copyOf: ident(p), token: true, tapped: false, etbTurn: S.turn, ...extra };
   if (backUp(p)) t.copyBack = true;
@@ -1850,7 +1871,16 @@ async function targetFx(name, it) {
       ev.token = short(ident(p)) + (fx.copy === "frog" ? " (1/1 Frog)" : fx.copy === "shimmer" ? " (haste, exiled at end step)" : "");
       render(); await tokenEtb([tok], ident(p), name);
     }
-  } else if (fx.copy) ev.note = "copy of an opponent's creature: add it by hand";
+  } else if (fx.copy) {   // the page doesn't know the opponent's board, so you name what gets copied
+    const n = await nameOppPermanent(name, C[name].tgt);
+    if (n) {
+      const extra = fx.copy === "shimmer" ? { temp: true, hasteTurn: S.turn } : fx.copy === "frog" ? { setPT: [1, 1] } : {};
+      const tok = { uid: S.nextId++, name: n, copyOf: n, token: true, tapped: false, etbTurn: S.turn, ...extra };
+      S.bf.push(tok);
+      ev.token = short(n) + " (an opponent's)";
+      render(); await tokenEtb([tok], n, name);
+    } else ev.note = "copied an opponent's permanent by hand";
+  }
   if (fx.note) ev.gains = fx.note;
   log("effect", ev);
   if (fx.treasure) addTreasure(fx.treasure);
@@ -2680,6 +2710,7 @@ function chip(n, extra = "", cls = "") {
 }
 function render() {
   if (!S) return;
+  for (const [n, c] of Object.entries(S.extraCards || {})) if (!C[n]) C[n] = c;
   $("turnNo").textContent = S.phase === "mull" ? "Opening hand" : `Turn ${S.turn}`;
   const inf = S.inf || {}, show = (k, v) => inf[k] ? "∞" : v;
   $("storm").textContent = show("storm", S.storm);
