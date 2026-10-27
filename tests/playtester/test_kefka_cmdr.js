@@ -21,7 +21,7 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   check('The sheet shows the opponents\' rolled discards, with no dropdowns', await state(() => /Opponent 1 discards/.test(document.getElementById('sheetBody').textContent) && !document.querySelector('#sheetBody select')));
   await discards();
   check('Kefka ETB: one draw per card type among your land and the rolled discards', await state(h => { const types = new Set(['land', ...S.kefkaOpp.filter(Boolean)]); return S.hand.length === h - 1 + types.size && S.gy.includes('Island'); }, hand0), await state(() => JSON.stringify(S.turnLog.filter(e => e.a === 'Kefka'))));
-  check('Opponents discarding shrink the tracked hand size', await state(() => S.oppHand === 6 - S.kefkaOpp.filter(Boolean).length));
+  check('Opponents discarding shrink the tracked hand size', await state(() => S.opp.every((o, i) => o.hand === 7 - (S.kefkaOpp[i] ? 1 : 0))));
 
   // opponents' discards are rolled at random, and an empty tracked hand discards nothing
   const rolls = new Set();
@@ -35,11 +35,29 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   }
   check('Opponent discards are rolled card types, not nothing', !rolls.has('') && rolls.size > 1, [...rolls].join(','));
   await setup(['Island'], []);
-  await ev(() => { S.oppHand = 0; });
+  await ev(() => { S.opp.forEach(o => { o.hand = 0; }); });
   await go(() => enterBf('Kefka, Court Mage // Kefka, Ruler of Ruin')); await go(() => { resolveTop(); });
   await T.p.waitForFunction(() => !document.getElementById('sheet').hidden && document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
   check('An empty opponent hand discards nothing', await ev(() => [0, 1, 2].every(i => S.kefkaOpp[i] === '') && /discards nothing/.test(document.getElementById('sheetBody').textContent)));
   await press('Discard and draw');
+
+  // each opponent's hand is tracked on its own: repeated triggers keep hitting until that hand is empty
+  await setup(['Island'], []);
+  await ev(() => { S.opp[0].hand = 1; S.opp[1].hand = 3; S.opp[2].hand = 7; S.lib = Array(40).fill('Island'); });
+  const hit = [];
+  for (let g = 0; g < 3; g++) {
+    await go(() => enterBf('Kefka, Court Mage // Kefka, Ruler of Ruin')); await go(() => { resolveTop(); });
+    await T.p.waitForFunction(() => !document.getElementById('sheet').hidden && document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
+    hit.push(await ev(() => [0, 1, 2].map(i => S.kefkaOpp[i] ? 1 : 0).join('')));
+    await press('Discard and draw');
+  }
+  check('Opponent 1 runs out after one trigger, the others keep discarding', hit.join() === '111,011,011', hit.join());
+  check('Hands left: 0, 0, 4', await state(() => S.opp.map(o => o.hand).join() === '0,0,4'), await state(() => S.opp.map(o => o.hand).join()));
+  check('The opponent chips show each hand', await state(() => /h 4/.test(document.getElementById('opps').textContent)));
+  await ev(() => { S.target = 2; render(); });
+  check('The hand counter shows the targeted opponent', await state(() => document.getElementById('ohand').textContent === '4'));
+  await ev(() => document.querySelector('[data-act="ohand:-1"]').click());
+  check('Its buttons change only that opponent', await state(() => S.opp.map(o => o.hand).join() === '0,0,3'));
 
   // Harmonic Prodigy doubles Kefka's trigger (he's a Wizard)
   await setup(['Island', 'Gamble'], ['Harmonic Prodigy']);

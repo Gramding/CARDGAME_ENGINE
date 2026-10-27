@@ -42,6 +42,11 @@ Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe and Tataru Taru, 
 opponents sometimes pay the tax (rarely for Esper Sentinel and Mystic Remora). A summary shows what
 happened. The odds sit in `OPP_SIM` in `app.js`, and the log drawer has a switch to turn it off.
 
+Each opponent's hand is tracked on its own. They start with seven, draw on their turns, play a land,
+cast only what they hold (cantrips refill it) and discard down to seven at their end step. Kefka's
+discards come out of those hands, and an opponent with an empty hand discards nothing. The opponent
+chips show library and hand, and the hand counter in the top bar adjusts the targeted opponent.
+
 - **Krark + Sakashima:** each Krark trigger flips on its own, with copies, Birgi, Vivi, Ral, Twinflame
   loops and the rest of the storm package.
 - **Kefka, Court Mage:** Kefka's discard-and-draw trigger and his {8} transform (Ruler of Ruin draws
