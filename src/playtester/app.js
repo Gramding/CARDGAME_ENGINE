@@ -512,6 +512,18 @@ function endTurn() {
   S.allTurns.push({ turn: S.turn, events: S.turnLog, stats: { ...S.turnStats } });
   S.turnLog = [];
 }
+/* cleanup step: discard down to the maximum hand size of seven */
+const MAX_HAND = 7;
+async function cleanupDiscard() {
+  const k = S.hand.length - MAX_HAND;
+  if (k <= 0) return true;
+  const idx = await multiPick(`End of turn: discard ${k} down to ${MAX_HAND} cards`, S.hand, k, [], true, null, "Discard them");
+  if (!idx) { toast("The turn goes on. Pass again when you're ready to discard.", "warn"); return false; }
+  const names = idx.map(i => S.hand[i]);
+  for (const n of names) { S.hand.splice(S.hand.indexOf(n), 1); toGy(n); }
+  log("cleanup discard", { cards: names.map(short), hand: S.hand.length });
+  return true;
+}
 async function nextTurn() {
   if (S.stack.length) { toast("Resolve or clear the stack before passing the turn.", "warn"); return; }
   if (S.loseAt === S.turn) {   // Final Fortune's delayed trigger at this turn's end step
@@ -520,7 +532,9 @@ async function nextTurn() {
     if (v === "lose") await endGame({ result: "loss", method: "Other", note: `Final Fortune's extra turn ended on turn ${S.turn}.` });
     return;
   }
-  snapshotUndo(); endTurn();
+  snapshotUndo();
+  if (!(await cleanupDiscard())) { dropSnapshot(); return; }   // closing the discard sheet keeps the turn going
+  endTurn();
   const extra = (S.extra || []).shift();
   if (!extra) for (const o of S.opp) if (o.lib > 0) o.lib--;   // opponents only draw when they get a turn
   startTurn(!extra);

@@ -81,7 +81,7 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   for (let i = 0; i < 2; i++) { await go(() => { resolveTop(); }); await discards(); }
   await go(() => combat());
   check('Combat damage: 12 to opponent 1', await state(() => S.opp[0].life === 28), await state(() => S.opp.map(o => o.life).join(',')));
-  await ev(() => { nextTurn(); }); await T.p.waitForTimeout(150);
+  await ev(() => { S.hand = S.hand.slice(0, 7); nextTurn(); }); await T.p.waitForTimeout(150);   // Kefka's draws can push the hand past seven
   check('Gogo is Gogo again next turn', await state(() => { const g = S.bf.find(p => p.name === 'Gogo, Mysterious Mime'); return !g.copyOf && power(g) === 2; }));
 
   // Irma copies for good and keeps her trigger, with a +1/+1 counter
