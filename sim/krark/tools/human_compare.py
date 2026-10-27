@@ -83,16 +83,19 @@ def mulligan_calls(g, on_draw):
 
 
 def play_from(args):
-    """Sim pilot plays a fixed kept hand; library order, seat and flips are random."""
+    """Sim pilot plays a fixed kept hand; library order and flips are random. The playtester always
+    lets you start Gemstone Caverns with a luck counter, so the pilot is never the starting player."""
     hand, seed, turns, lookahead = args
     c = exp_cfg(lookahead=lookahead, turns=turns)
     g = k.Game(k.parse_deck(k.DECKLIST), random.Random(seed), c)
+    g.seat = g.seat or 1
     g.shuffle()
     for card in hand:
         g.library.remove(card)
     g.hand = list(hand)
     g.mulligans = 7 - len(hand)
     g.opening_t1_krark = k.turn1_krark(hand, g.seat != 0)
+    g.gemstone_open()
     try:
         for _ in range(turns):
             g.play_turn()

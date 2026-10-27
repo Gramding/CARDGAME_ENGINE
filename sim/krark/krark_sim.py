@@ -2479,6 +2479,10 @@ class Game:
                 self.opening_t1_krark = turn1_krark(self.hand, on_draw)
                 break
         self.ts["cards_drawn"] = 0
+        self.gemstone_open()
+
+    def gemstone_open(self):
+        """Not on the play: Gemstone Caverns starts in play with a luck counter, exiling a card."""
         if "Gemstone Caverns" in self.hand and self.seat != 0:
             self.hand.remove("Gemstone Caverns")
             p = Perm("Gemstone Caverns", "land")
