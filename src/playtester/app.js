@@ -1805,6 +1805,8 @@ async function combat() {
    can't see, are buttons on the cards that care about them. */
 const LOTHO = "Lotho, Corrupt Shirriff", FOOD = "Food Token", SOLDIER = "Human Soldier Token";
 C[FOOD] = { n: FOOD, s: "Food", k: "artifact", c: "", token: 1 };
+const OPP_CREATURE = "Opponent's creature";   // a copy of one of the rolled creatures opponents control
+C[OPP_CREATURE] = { n: OPP_CREATURE, s: "Opponent's creature", k: "creature", c: "", pt: [2, 2], token: 1 };
 C[SOLDIER] = { n: SOLDIER, s: "Human Soldier", k: "creature", c: "W", pt: [1, 1], ty: ["Human", "Soldier"], token: 1 };
 /* what each creature-targeting spell does to its target, then the cantrip part */
 const TFX = {
@@ -1871,8 +1873,8 @@ async function targetFx(name, it) {
       ev.token = short(ident(p)) + (fx.copy === "frog" ? " (1/1 Frog)" : fx.copy === "shimmer" ? " (haste, exiled at end step)" : "");
       render(); await tokenEtb([tok], ident(p), name);
     }
-  } else if (fx.copy) {   // the page doesn't know the opponent's board, so you name what gets copied
-    const n = await nameOppPermanent(name, C[name].tgt);
+  } else if (fx.copy) {   // the page doesn't know the opponent's board: Ink-Treader's copies make a plain token, a spell you aim yourself asks
+    const n = t.ink ? OPP_CREATURE : await nameOppPermanent(name, C[name].tgt);
     if (n) {
       const extra = fx.copy === "shimmer" ? { temp: true, hasteTurn: S.turn } : fx.copy === "frog" ? { setPT: [1, 1] } : {};
       const tok = { uid: S.nextId++, name: n, copyOf: n, token: true, tapped: false, etbTurn: S.turn, ...extra };
@@ -1900,7 +1902,7 @@ async function inkCopies(it) {
   const board = oppBoard(), alive = aliveOpps();
   const opp = alive.reduce((a, i) => a + board.n[i], 0);
   for (const q of mine) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "perm", uid: q.uid, label: short(ident(q)) } });
-  for (let i = 0; i < opp; i++) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "other" } });
+  for (let i = 0; i < opp; i++) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "other", ink: true } });
   S.turnStats.copies += mine.length + opp;
   log("Ink-Treader Nephilim", { c: short(it.name), copies: mine.length + opp, yours: mine.length, opponents: alive.map(i => board.n[i]).join("+"), inkGone: ink ? undefined : true });
   toast(`Ink-Treader: ${mine.length + opp} cop${mine.length + opp === 1 ? "y" : "ies"} of ${short(it.name)}, ${mine.length} for your creatures and ${opp} for opponents' (${alive.map(i => board.n[i]).join(" + ")}).`, "win");

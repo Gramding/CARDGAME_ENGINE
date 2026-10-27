@@ -81,6 +81,17 @@ const { table, check } = require('./lib');
   check('A Sol Ring token', await state(() => S.bf.some(p => p.token && ident(p) === 'Sol Ring')));
   check('Flash Photography offers flashback {4UU}', await state(() => hasFlashback('Flash Photography') && C['Flash Photography'].fb === '4UU'));
 
+  // copying through Ink-Treader scales: every copy, opponents' included, adds a creature for the next spell
+  await setup(['Heat Shimmer', 'Leap'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Volcanic Island', 'Taiga', 'Badlands', 'Tropical Island']);
+  await ev(() => { S.oppBoard = { turn: S.turn, n: [2, 1, 0] }; });
+  await go(() => cast('Heat Shimmer', 'hand')); await press('Target it'); await runStack();
+  check("Heat Shimmer through Ink: copies of Ink, Elves and three opponents' creatures, no prompts", await state(() => S.bf.filter(isCreatureP).length === 7 && S.bf.filter(p => p.name === "Opponent's creature" && p.temp && p.hasteTurn === S.turn).length === 3), await state(() => S.bf.filter(isCreatureP).map(p => p.name).join(', ')));
+  const h3 = await state(() => S.hand.length);
+  await go(() => cast('Leap', 'hand')); await press('Target it'); await resolve();
+  check('The next spell copies for the six other creatures you now have plus three of theirs', await state(() => S.stack.filter(x => x.kind === 'copy' && x.name === 'Leap').length === 9));
+  await runStack();
+  check('Leap drew 10', await state(h => S.hand.length === h - 1 + 10, h3));
+
   // Flash Photography can copy any permanent, yours or an opponent's
   await setup(['Flash Photography', 'Flash Photography'], ['Tropical Island', 'Tundra', 'Volcanic Island', 'Underground Sea', 'Taiga', 'Bayou', 'Savannah', 'Scrubland', 'Smothering Tithe']);
   await go(() => cast('Flash Photography', 'hand'));
