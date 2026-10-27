@@ -666,6 +666,23 @@ const TRIG = {
   remora:     { nm: "Remora", src: "Mystic Remora", rank: 1, label: () => "Mystic Remora: cumulative upkeep {1}" },
   gogo:       { nm: "Gogo", src: "Gogo, Mysterious Mime", rank: 5, label: () => "Gogo: become a copy of another creature" },
   irma:       { nm: "Irma", src: "Irma, Part-Time Mutant", rank: 5, label: () => "Irma: become a copy of another creature, +1/+1 counter" },
+  // activated abilities: the cost is paid on activation, the effect waits on the stack
+  abWish:     { nm: "Wishclaw", src: "Wishclaw Talisman", rank: 6, label: () => "Wishclaw Talisman: search for a card, then an opponent gains control of it" },
+  abKinnan:   { nm: "Kinnan", src: "Kinnan, Bonder Prodigy", rank: 6, label: () => "Kinnan: look at the top five, put a non-Human creature onto the battlefield" },
+  abDrsB:     { nm: "Deathrite", src: "Deathrite Shaman", rank: 6, label: it => `Deathrite Shaman: exile ${it.card ? short(it.card) : "an opponent's card"}, each opponent loses 2` },
+  abDrsG:     { nm: "Deathrite", src: "Deathrite Shaman", rank: 6, label: it => `Deathrite Shaman: exile ${it.card ? short(it.card) : "an opponent's card"}, you gain 2` },
+  abKefka8:   { nm: "Kefka {8}", src: "Kefka, Court Mage // Kefka, Ruler of Ruin", rank: 6, label: () => "Kefka {8}: each opponent sacrifices a permanent, transform Kefka" },
+  abIslet:    { nm: "Islet", src: "Fiery Islet", rank: 6, label: () => "Fiery Islet: draw a card" },
+  abZone:     { nm: "Emergence Zone", src: "Emergence Zone", rank: 6, label: () => "Emergence Zone: cast spells as though they had flash this turn" },
+  abMinamo:   { nm: "Minamo", src: "Minamo, School at Water's Edge", rank: 6, label: it => `Minamo: untap ${it.label || "a legendary permanent"}` },
+  abFlip:     { nm: "Scoundrel", src: "Tavern Scoundrel", rank: 6, label: () => "Tavern Scoundrel: flip a coin" },
+  abUntap:    { nm: "Untap", rank: 6, label: it => `Untap ${short(it.name)}` },
+  abFood:     { nm: "Food", rank: 6, label: () => "Food: you gain 3 life" },
+  abGleam:    { nm: "Gleaming", src: "Gleaming Splendor", rank: 6, label: it => `Gleaming Splendor: ${it.targets.map(t => t === "me" ? "you" : `opponent ${t + 1}`).join(" and ")} draw` },
+  abOtawara:  { nm: "Otawara", src: "Otawara, Soaring City", rank: 6, label: () => "Otawara channel: return a permanent to its owner's hand" },
+  abBoseiju:  { nm: "Boseiju", src: "Boseiju, Who Endures", rank: 6, label: () => "Boseiju channel: destroy an opponent's artifact, enchantment or nonbasic land" },
+  abCycle:    { nm: "Wizardcycling", src: "Step Through", rank: 6, label: () => "Wizardcycling: search for a Wizard" },
+  abHarnfel:  { nm: "Harnfel", src: "Birgi, God of Storytelling // Harnfel, Horn of Bounty", rank: 6, label: () => "Harnfel: exile the top two, play them this turn" },
   lotho:      { nm: "Lotho", src: "Lotho, Corrupt Shirriff", rank: 1, label: () => "Lotho: you lose 1 life and create a Treasure" },
   ink:        { nm: "Ink-Treader", src: "Ink-Treader Nephilim", rank: 7, label: it => `Ink-Treader Nephilim: copy ${short(it.name)} for each other creature` },
   seeker:     { nm: "Spellseeker", src: "Spellseeker", rank: 6, label: () => "Spellseeker: find an instant or sorcery (MV 2 or less)" },
@@ -678,8 +695,8 @@ const ETB_TRIG = { [MONK]: "monk", [DUAL]: "dualcaster", [RECRUITER]: "recruiter
   "Spellseeker": "seeker", "Nephilim Epochal": "epochal", "Tataru Taru": "tataru" };
 /* the ETB trigger a permanent has: Kefka's back face has none, and a Frog from Amphibian Downpour has no abilities */
 function etbEff(p) { if (p.frog || (ident(p) === KEFKA && backUp(p))) return null; return ETB_TRIG[ident(p)] || null; }
-let holdPriority = false, askOrder = true, quiet = false;
-try { holdPriority = localStorage.getItem("krark-playtest-hold") === "on"; askOrder = localStorage.getItem("krark-playtest-ask-order") !== "off"; } catch (e) { /* defaults */ }
+let holdPriority = true, askOrder = true, quiet = false;   // hold priority: nothing resolves until you say so
+try { holdPriority = localStorage.getItem("krark-playtest-hold") !== "off"; askOrder = localStorage.getItem("krark-playtest-ask-order") !== "off"; } catch (e) { /* defaults */ }
 function setPref(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* per-browser only */ } }
 function orderPref() { try { return JSON.parse(localStorage.getItem("krark-playtest-order") || "[]"); } catch (e) { return []; } }
 
@@ -1047,7 +1064,63 @@ async function enterBf(name, extra = {}) {
   }
   return p;
 }
+/* an activated ability that uses the stack: its cost is paid already, the effect waits for you to resolve it */
+async function pushAbility(eff, extra = {}) {
+  const empty = !S.stack.length;
+  const it = { id: S.nextId++, kind: "trigger", eff, ability: true, ...extra };
+  S.stack.push(it);
+  if (empty && !holdPriority) it.auto = true;
+  log("activate", { c: TRIG[eff].label(it) });
+  render(); await settle();
+  if (S.stack.includes(it)) toast(`${TRIG[eff].label(it)}: on the stack. Respond or resolve it.`);
+}
+async function resolveAbility(it) {
+  const e = it.eff, src = S.bf.find(q => q.uid === it.src);
+  if (e === "abWish") { await tutor(WISHCLAW); if (src) { giveAway(src, "Wishclaw Talisman"); toast("An opponent controls Wishclaw Talisman now. It waits in your exile pile; take it back from there if it returns."); } }
+  else if (e === "abKinnan") {
+    const top = S.lib.splice(0, 5);
+    const ok = top.filter(n => (C[n] || {}).k === "creature" && !(C[n].ty || []).includes("Human"));
+    const n = ok.length ? await pickName(`Kinnan: top five are ${top.map(short).join(", ")}. Put a non-Human creature onto the battlefield?`, ok, ok[0], "Put it in", KINNAN) : null;
+    S.lib.push(...shuffle(top.filter(x => x !== n)));
+    log("Kinnan", { saw: top.map(short), put: n ? short(n) : "nothing" });
+    if (n) await enterBf(n);
+  } else if (e === "abDrsB" || e === "abDrsG") {
+    if (it.card && !S.gy.includes(it.card)) { log("fizzle", { c: "Deathrite Shaman", note: `${short(it.card)} left the graveyard` }); return; }
+    if (it.card) { S.gy.splice(S.gy.lastIndexOf(it.card), 1); S.ex.push({ n: it.card }); }
+    if (e === "abDrsB") { damageEach(2); log("Deathrite Shaman", { exiled: it.card ? short(it.card) : "an opponent's card", note: "each opponent loses 2" }); }
+    else { S.life += 2; log("Deathrite Shaman", { exiled: it.card ? short(it.card) : "an opponent's card", life: 2 }); }
+  } else if (e === "abKefka8") {
+    if (src && !src.flipped) { src.flipped = true; toast("Kefka, Ruler of Ruin: whenever an opponent loses life during your turn, you draw that many.", "win"); }
+    log("Kefka", { ability: "{8}", note: src ? "each opponent sacrificed a permanent; Kefka transformed" : "each opponent sacrificed a permanent; Kefka was gone, so no transform" });
+  } else if (e === "abIslet") draw(1, "Fiery Islet");
+  else if (e === "abZone") { S.flashTurn = S.turn; log("Emergence Zone", { note: "spells have flash this turn" }); toast("You can cast spells as though they had flash this turn.", "win"); }
+  else if (e === "abMinamo") { const t = S.bf.find(q => q.uid === it.target); if (t) { t.tapped = false; log("Minamo", { untapped: permLabel(t) }); } else log("fizzle", { c: "Minamo", note: "the target left" }); }
+  else if (e === "abFlip") {
+    const win = rnd() < 0.5;
+    log("Tavern Scoundrel", { flip: win ? "W" : "L" });
+    if (win) { S.turnStats.flipsWon++; await putTriggers(flipWonItems(), "Tavern Scoundrel won a flip"); toast("Won the flip: Tavern Scoundrel's trigger is on the stack.", "win"); }
+    else toast("Lost the flip.", "warn");
+  } else if (e === "abUntap") { if (src) src.tapped = false; log("untap " + short(it.name), {}); }
+  else if (e === "abFood") { S.life += 3; log("Food", { life: 3 }); }
+  else if (e === "abGleam") { for (const t of it.targets) { if (t === "me") draw(1, "Gleaming Splendor"); else await oppDrew(t, "Gleaming Splendor"); } }
+  else if (e === "abOtawara") {
+    const t = await pickPerm("Otawara: return which nonland permanent?", S.bf.filter(q => (C[ident(q)] || {}).k !== "land" && !q.asLand), "Return mine", "An opponent's", "Otawara, Soaring City");
+    if (t && t !== "opp") leaveBf(t, "hand", "Otawara"); else log("channel Otawara", { note: "an opponent's permanent" });
+  } else if (e === "abBoseiju") log("channel Boseiju", { note: "destroyed an opponent's artifact, enchantment or nonbasic land; they may fetch a basic-typed land" });
+  else if (e === "abCycle") {
+    const wiz = [...new Set(S.lib.filter(n => (C[n].ty || []).includes("Wizard")))];
+    const n = wiz.length ? await pickName("Wizardcycling: find a Wizard", wiz, wiz[0], "Take it", "Step Through") : null;
+    if (n) { S.lib.splice(S.lib.indexOf(n), 1); S.hand.push(n); } shuffle(S.lib);
+    log("wizardcycle", { found: n ? short(n) : "nothing" });
+  } else if (e === "abHarnfel") {
+    const ex = S.lib.splice(0, 2);
+    for (const n of ex) S.ex.push({ n, play: true, until: S.turn });
+    log("Harnfel", { exiled: ex.map(short) });
+    toast(`Harnfel exiled ${ex.map(short).join(" and ")}. Play them from exile this turn.`, "win");
+  }
+}
 async function resolveTrigger(it) {
+  if (it.ability) return resolveAbility(it);
   const e = it.eff;
   if (e === "krark") {
     const win = rnd() < 0.5;
@@ -2007,7 +2080,8 @@ async function gleamingSplendor() {
     if (targets.some(t => t !== "me" && S.opp[t].lib <= 0)) { stop = "a target has no cards left"; break; }
     const pay = autoPay({ g: 2, W: 1 }, false);
     if (!pay.ok) { stop = "out of mana"; break; }
-    for (const t of targets) { if (t === "me") draw(1, "Gleaming Splendor"); else await oppDrew(t, "Gleaming Splendor"); }
+    if (n === 1) { log("Gleaming Splendor", { tapped: pay.tapped }); await pushAbility("abGleam", { targets }); return true; }   // one activation waits on the stack
+    for (const t of targets) { if (t === "me") draw(1, "Gleaming Splendor"); else await oppDrew(t, "Gleaming Splendor"); }   // the repeat is a shortcut
   }
   log("Gleaming Splendor", { activations: done, targets: targets.map(t => t === "me" ? "you" : `opponent ${t + 1}`), stop, treasures: S.treasures - t0 });
   if (!done) { toast(`Gleaming Splendor: ${stop === "out of mana" ? "its ability costs {2}{W}" : stop}.`, "bad"); return false; }
@@ -2187,22 +2261,12 @@ async function handMenu(name) {
     const pay = autoPay({ g, R: 0, U: 1 }, false);
     if (!pay.ok) { dropSnapshot(); toast(`Channel costs ${g ? g : ""}U right now.`, "bad"); return; }
     S.hand.splice(S.hand.indexOf(name), 1); toGy(name);
-    const perms = S.bf.filter(p => (C[ident(p)] || {}).k !== "land" && !p.asLand);
-    const labels = perms.map(p => short(p.name) + (p.copyOf && p.copyOf !== p.name ? " as " + short(p.copyOf) : "") + (p.token ? " (token)" : ""));
-    const wrap = document.createElement("div"); wrap.className = "picklist";
-    let tgt = null;
-    perms.forEach((p, i) => { const b = document.createElement("button"); b.className = "pick"; b.textContent = labels[i]; b.onclick = () => { tgt = p; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
-    const r = await openSheet(`Otawara channel (paid ${g ? g : ""}U): return which permanent?`, wrap, [["Return mine", "go", "primary"], ["An opponent's", "opp"]]);
-    if (r === "go" && tgt) { S.bf = S.bf.filter(q => q !== tgt); if (!tgt.token) S.hand.push(tgt.name); log("channel Otawara", { cost: (g || "") + "U", returned: short(tgt.name), tapped: pay.tapped }); bounceCleanup(tgt); }
-    else log("channel Otawara", { cost: (g || "") + "U", note: "opponent's permanent", tapped: pay.tapped });
+    log("channel Otawara", { cost: (g || "") + "U", tapped: pay.tapped });
+    await pushAbility("abOtawara");
   } else if (v === "cycle") {
     const pay = autoPay({ g: 2, R: 0, U: 0 }, false); if (!pay.ok) { dropSnapshot(); toast("Need 2 mana to wizardcycle.", "bad"); return; }
     S.hand.splice(S.hand.indexOf(name), 1); toGy(name);
-    const wiz = S.lib.filter(n => (C[n].ty || []).includes("Wizard"));
-    let picked = wiz[0];
-    const list = cardList(wiz, (nm, i, b) => { picked = nm; [...list.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); });
-    const r = await openSheet("Wizardcycling: find a Wizard", list, [["Take it", "take", "primary"]]);
-    if (r && picked) { S.lib.splice(S.lib.indexOf(picked), 1); shuffle(S.lib); S.hand.push(picked); log("wizardcycle", { found: short(picked) }); }
+    await pushAbility("abCycle");
   } else if (v === "esg") {
     S.hand.splice(S.hand.indexOf(name), 1); S.ex.push({ n: name }); addMana("G", 1); log("Elvish Spirit Guide", { mana: "G" });
   } else if (v === "boseiju") {
@@ -2211,7 +2275,8 @@ async function handMenu(name) {
     const pay = autoPay({ g, G: 1 }, false);
     if (!pay.ok) { dropSnapshot(); toast(`Channel costs ${g ? g : ""}G right now.`, "bad"); return; }
     S.hand.splice(S.hand.indexOf(name), 1); toGy(name);
-    log("channel Boseiju", { cost: (g || "") + "G", note: "destroyed an opponent's artifact, enchantment or nonbasic land; they may fetch a basic-typed land", tapped: pay.tapped });
+    log("channel Boseiju", { cost: (g || "") + "G", tapped: pay.tapped });
+    await pushAbility("abBoseiju");
   } else if (v === "ssg") {
     S.hand.splice(S.hand.indexOf(name), 1); S.ex.push({ n: name }); addMana("R", 1); log("Simian Spirit Guide", { mana: "R" });
   } else {
@@ -2394,10 +2459,8 @@ async function bfMenu(uid) {
     const r = await openSheet(`${HARNFEL}: discard which card?`, pf.list, [["Discard and exile two", "go", "primary"], ["Cancel", null]]);
     if (r !== "go") { dropSnapshot(); return; }
     const d = pf.get(); S.hand.splice(S.hand.indexOf(d), 1); toGy(d);
-    const ex = S.lib.splice(0, 2);
-    for (const n of ex) S.ex.push({ n, play: true, until: S.turn });
-    log("Harnfel", { discarded: short(d), exiled: ex.map(short) });
-    toast(`Harnfel exiled ${ex.map(short).join(" and ")}. Play them from exile this turn.`, "win");
+    log("Harnfel", { discarded: short(d) });
+    await pushAbility("abHarnfel", { src: p.uid });
     render(); saveLocal(); return;
   }
   if (v === "ral+1" || v === "ral-2" || v === "ral-8") {
@@ -2417,15 +2480,14 @@ async function bfMenu(uid) {
   }
   if (v === "crack") { await crackMenu(p); }
   else if (v === "vivi") { const x = Math.max(0, power(p)); p.viviTurn = S.turn; addMana("A", x); log("Vivi mana", { mana: x + " U/R" }); }
-  else if (v === "vault") { p.tapped = true; const pay = autoPay({ g: untapCost }, false); if (!pay.ok) { dropSnapshot(); toast(`Untapping ${short(p.name)} costs ${untapCost}.`, "bad"); return; } const v2 = S.bf.find(q => q.uid === uid); if (v2) v2.tapped = false; log("untap " + short(p.name), { tapped: pay.tapped }); }
+  else if (v === "vault") { p.tapped = true; const pay = autoPay({ g: untapCost }, false); if (!pay.ok) { dropSnapshot(); toast(`Untapping ${short(p.name)} costs ${untapCost}.`, "bad"); return; } log("activate " + short(p.name), { cost: untapCost, tapped: pay.tapped }); await pushAbility("abUntap", { src: uid, name: p.name }); }
   else if (v === "kefka8") {
     if (S.stack.length) { dropSnapshot(); toast("Kefka's ability is sorcery speed: resolve the stack first.", "warn"); return; }
     if (onBf(TOTEM)) { dropSnapshot(); toast("Cursed Totem: activated abilities of creatures can't be activated.", "bad"); return; }
     const pay = autoPay({ g: 8 }, false);
     if (!pay.ok) { dropSnapshot(); toast("Kefka's ability costs {8}.", "bad"); return; }
-    p.flipped = true;
-    log("Kefka", { ability: "{8}", note: "each opponent sacrificed a permanent; Kefka transformed", tapped: pay.tapped });
-    toast("Kefka, Ruler of Ruin: whenever an opponent loses life during your turn, you draw that many.", "win");
+    log("Kefka", { ability: "{8} paid", tapped: pay.tapped });
+    await pushAbility("abKefka8", { src: uid });
   } else if (v === "led") {
     const cols = IDENT || COLORS;
     pendingArt = LED;
@@ -2439,9 +2501,7 @@ async function bfMenu(uid) {
     if (!pay.ok) { dropSnapshot(); toast("Wishclaw Talisman needs {1}.", "bad"); return; }
     p.tapped = true; p.wish--;
     log("Wishclaw Talisman", { wish: p.wish, tapped: pay.tapped });
-    await tutor(WISHCLAW);
-    giveAway(p, "Wishclaw Talisman");
-    toast("An opponent controls Wishclaw Talisman now. It waits in your exile pile; take it back from there if it returns.");
+    await pushAbility("abWish", { src: uid });
   } else if (v === "rhystic" || v === "remora" || v === "sentinel") draw(1, short(p.name));
   else if (v === "drsMana" || v === "drsB" || v === "drsG") {
     const kind = v === "drsMana" ? "land" : v === "drsB" ? "instsorc" : "creature";
@@ -2451,23 +2511,18 @@ async function bfMenu(uid) {
     const what = { land: "land", instsorc: "instant or sorcery", creature: "creature" }[kind];
     const n = mine.length ? await pickName(`Deathrite Shaman: exile which ${what} card from your graveyard?`, mine, mine[0], "Exile it", "Deathrite Shaman") : null;
     if (!n) { const ok = await openSheet(`No ${what} card in your graveyard. Exile one from an opponent's graveyard?`, null, [["Yes", "yes", "primary"], ["Cancel", null]]); if (ok !== "yes") { dropSnapshot(); return; } }
-    else { S.gy.splice(S.gy.lastIndexOf(n), 1); S.ex.push({ n }); }
     const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = true;
-    if (v === "drsMana") {
+    if (v === "drsMana") {   // a mana ability: no stack
+      if (n) { S.gy.splice(S.gy.lastIndexOf(n), 1); S.ex.push({ n }); }
       pendingArt = "Deathrite Shaman";
       const col = await openSheet("Deathrite Shaman: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""])) || (IDENT || "G")[0];
       addMana(col, 1); log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's land", mana: col });
-    } else if (v === "drsB") { damageEach(2); log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's card", note: "each opponent loses 2" }); }
-    else { S.life += 2; log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's card", life: 2 }); }
+    } else await pushAbility(v === "drsB" ? "abDrsB" : "abDrsG", { src: uid, card: n || null });   // the card is exiled on resolution
   } else if (v === "kinnan") {
     const pay = autoPay({ g: 5, G: 1, U: 1 }, false);
     if (!pay.ok) { dropSnapshot(); toast("Kinnan's ability costs {5}{G}{U}.", "bad"); return; }
-    const top = S.lib.splice(0, 5);
-    const ok = top.filter(n => (C[n] || {}).k === "creature" && !(C[n].ty || []).includes("Human"));
-    const n = ok.length ? await pickName(`Kinnan: top five are ${top.map(short).join(", ")}. Put a non-Human creature onto the battlefield?`, ok, ok[0], "Put it in", KINNAN) : null;
-    const rest = shuffle(top.filter(x => x !== n)); S.lib.push(...rest);
-    log("Kinnan", { saw: top.map(short), put: n ? short(n) : "nothing", tapped: pay.tapped });
-    if (n) await enterBf(n);
+    log("Kinnan", { ability: "{5}{G}{U} paid", tapped: pay.tapped });
+    await pushAbility("abKinnan", { src: uid });
   } else if (v === "oppdrew") await oppDrew(S.target, short(p.name));
   else if (v === "gleam") { if (!(await gleamingSplendor())) { dropSnapshot(); return; } } else if (v === "food") { S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "Food", by: "The Cabbage Merchant" }); }
   else if (v === "foodmana") {
@@ -2479,22 +2534,24 @@ async function bfMenu(uid) {
   } else if (v === "eat") {
     p.tapped = true; const pay = autoPay({ g: 2 }, false);
     if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("A Food costs {2} to eat.", "bad"); return; }
-    S.bf = S.bf.filter(q => q.uid !== uid); S.life += 3; log("Food", { life: 3, tapped: pay.tapped });
+    S.bf = S.bf.filter(q => q.uid !== uid); log("Food", { sacrificed: true, tapped: pay.tapped });
+    await pushAbility("abFood");
   } else if (v === "recruit") await recruit(p.name);
   else if (v === "lotho") { S.life -= 1; addTreasure(1); log("Lotho", { note: "an opponent's second spell", life: -1, treasures: 1 }); }
-  else if (v === "islet") { p.tapped = true; const pay = autoPay({ g: 1, R: 0, U: 0 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Needs 1 more mana.", "bad"); return; } S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); log("Fiery Islet", { tapped: pay.tapped }); draw(1, "Fiery Islet"); }
+  else if (v === "islet") { p.tapped = true; const pay = autoPay({ g: 1, R: 0, U: 0 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Needs 1 more mana.", "bad"); return; } S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); log("Fiery Islet", { sacrificed: true, tapped: pay.tapped }); await pushAbility("abIslet"); }
   else if (v === "ezone") {
     p.tapped = true; const pay = autoPay({ g: 1 }, false);
     if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Emergence Zone needs {1}.", "bad"); return; }
-    S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); S.flashTurn = S.turn;
-    log("Emergence Zone", { note: "spells have flash this turn", tapped: pay.tapped }); toast("You can cast spells as though they had flash this turn.", "win");
+    S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name);
+    log("Emergence Zone", { sacrificed: true, tapped: pay.tapped });
+    await pushAbility("abZone");
   } else if (v === "minamo") {
     const legs = S.bf.filter(q => q.uid !== uid && q.tapped && (C[ident(q)] || {}).leg);
     if (!legs.length) { dropSnapshot(); toast("No tapped legendary permanent to untap.", "warn"); return; }
     p.tapped = true; const pay = autoPay({ U: 1 }, false);
     if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Minamo needs {U}.", "bad"); return; }
     const t = await pickPerm("Minamo: untap which legendary permanent?", legs, "Untap it", null, p.name);
-    if (t && t !== "opp") { t.tapped = false; log("Minamo", { untapped: permLabel(t), tapped: pay.tapped }); }
+    if (t && t !== "opp") await pushAbility("abMinamo", { src: uid, target: t.uid, label: permLabel(t) });
   } else if (v === "scoundrel") {
     const fodder = S.bf.filter(q => q.uid !== uid);
     if (!fodder.length) { dropSnapshot(); toast("Tavern Scoundrel needs another permanent to sacrifice.", "warn"); return; }
@@ -2503,10 +2560,8 @@ async function bfMenu(uid) {
     const t = await pickPerm("Tavern Scoundrel: sacrifice which permanent?", S.bf.filter(q => q.uid !== uid), "Sacrifice it", null, SCOUNDREL);
     if (!t || t === "opp") { dropSnapshot(); return; }
     leaveBf(t, "die", "Tavern Scoundrel");
-    const win = rnd() < 0.5;
-    log("Tavern Scoundrel", { flip: win ? "W" : "L", tapped: pay.tapped });
-    if (win) { S.turnStats.flipsWon++; await putTriggers(flipWonItems(), "Tavern Scoundrel won a flip"); toast("Won the flip: Tavern Scoundrel's trigger is on the stack.", "win"); }
-    else toast("Lost the flip.", "warn");
+    log("Tavern Scoundrel", { sacrificed: permLabel(t), tapped: pay.tapped });
+    await pushAbility("abFlip", { src: uid });
   }
   else if (v === "ral") transformRal(p);
   else if (v === "loy+" || v === "loy-") { p.loyalty = Math.max(0, (p.loyalty || 0) + (v === "loy+" ? 1 : -1)); log("loyalty", { c: "Ral", loyalty: p.loyalty }); }

@@ -31,6 +31,11 @@ win checks. Mana covers all five colours, land types for fetches, shocks and pai
 
 Switch decks from the Game menu (**Switch deck**).
 
+Everything that uses the stack waits for you: spells, triggers and activated abilities (Wishclaw Talisman,
+Kinnan, Deathrite Shaman, channel and the rest) sit on the stack until you press Resolve or `R`, so you can
+respond first. Mana abilities stay instant. Turn off "Hold priority" in the log drawer to let a lone item
+resolve by itself.
+
 Passing the turn plays your opponents' turns at random: how many spells each casts (creature or
 not) and how many cards they draw, on their turn and off it. Cards that watch opponents, such as
 Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe and Tataru Taru, trigger from that, and

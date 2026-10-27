@@ -61,6 +61,8 @@ const ELVES = { name: 'Arbor Elf', layout: 'normal', mana_cost: '{G}', cmc: 1, t
       // the elf plays by hand: cast it with a Forest-free board via the pool
       await p.evaluate(() => { S.phase = 'play'; S.hand = ['Arbor Elf']; S.pool.G = 1; cast('Arbor Elf', 'hand'); });
       await p.waitForTimeout(200);
+      if (!(await p.evaluate(() => S.stack.some(x => x.name === 'Arbor Elf')))) fail('with hold priority on, the spell should wait on the stack');
+      await p.evaluate(() => { resolveTop(); }); await p.waitForTimeout(200);
       if (!(await p.evaluate(() => S.bf.some(x => x.name === 'Arbor Elf')))) fail('an unmodeled creature could not be cast');
     }
     await p.close();
