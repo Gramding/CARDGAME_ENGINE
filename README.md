@@ -1,7 +1,7 @@
 # Cardgame engine
 
-A browser playtester for Commander goldfishing. It ships with two cEDH decks, Krark, the Thumbless +
-Sakashima of a Thousand Faces and Kefka, Court Mage, and plays any deck you import. There is also a
+A browser playtester for Commander goldfishing. It ships with three cEDH decks (Krark, the Thumbless +
+Sakashima of a Thousand Faces, Kefka, Court Mage, and Nephilim Epochal) and plays any deck you import. There is also a
 Python simulator for the Krark deck. The plan is to grow the playtester
 into a general engine where card behaviour lives in per-card scripts and anything unscripted can
 still be played by hand.
@@ -37,6 +37,11 @@ Switch decks from the Game menu (**Switch deck**).
   Consultation and Tainted Pact, the tutors, flashback and Yawgmoth's Will, evoke, Final Fortune's
   extra turn, and a combat step with Gogo and Irma. Choices an opponent would make, like what they
   discard or whether they pay for Rhystic Study, are asked of you.
+- **Nephilim Epochal:** Ink-Treader Nephilim copies a creature cantrip for every other creature,
+  so Wisps untap your mana creatures and draw. It also has hybrid and X costs, convoke and
+  harmonize, mana creatures that can't tap the turn they arrive, Gaea's Cradle, Kinnan, Utopia Sprawl
+  and Enduring Vitality. Smothering Tithe, Tataru Taru and the other cards that react to opponents get
+  a button for "an opponent drew" or "an opponent cast a spell".
 
 Build and open it locally:
 
@@ -57,8 +62,8 @@ Coast; this is unofficial fan content.
 ## Deck import
 
 Open it from the playtester's Game menu (**Import a deck**) or at `/import/` on the site. Paste a
-Moxfield or Arena export with the commander first and a blank line after it (a `Commander`
-heading works too). The importer looks every card up on Scryfall and sorts each one into a bucket:
+Moxfield or Arena export with the commander first and a blank line after it. A `Commander` heading
+or Moxfield's `[Commander]` category tag works too, and other category tags are ignored. The importer looks every card up on Scryfall and sorts each one into a bucket:
 
 - **Modeled:** the engine already plays it.
 - **Data only:** a mana land, fetch land or mana rock that only needs a data entry.

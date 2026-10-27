@@ -1,5 +1,6 @@
 /* Decklist text -> card names and counts. Handles the usual exports: Moxfield and Arena text
-   ("1 Sol Ring", "1x Sol Ring", "1 Sol Ring (C21) 263 *F*"), section headers ("Commander", "Deck",
+   ("1 Sol Ring", "1x Sol Ring", "1 Sol Ring (C21) 263 *F*", Moxfield's "1 Leap (plst) [Inky package]"
+   category tags, where a "Commander" category marks the commander), section headers ("Commander", "Deck",
    "Sideboard"), comments, and a commander set apart by a blank line at the start or end of the list.
    A list with no marked commander gets one guessed from the card data (see commander.ts). */
 
@@ -16,7 +17,8 @@ export interface ParsedDeck {
 }
 
 const SECTION = /^(commanders?|deck|main(?:board)?|side(?:board)?|maybe(?:board)?|companion|considering|tokens?)\s*:?\s*(?:\(\d+\))?$/i;
-const CARD = /^(?:(\d+)\s*x?\s+)?(.+?)(?:\s+\(([A-Za-z0-9]{2,6})\)(?:\s+[\w★-]+)?)?((?:\s+\*[A-Z]+\*)*)\s*$/;
+// count, name, (SET) number, *F* style markers, then Moxfield's [Category{flags}] tags
+const CARD = /^(?:(\d+)\s*x?\s+)?(.+?)(?:\s+\(([A-Za-z0-9]{2,6})\)(?:\s+[\w★-]+)?)?((?:\s+\*[A-Z]+\*)*)(?:\s+\[([^\]]*)\])?\s*$/;
 const SKIPPED_SECTIONS = /^(side|maybe|considering|token)/i;
 
 export function parseDecklist(text: string): ParsedDeck {
@@ -36,8 +38,10 @@ export function parseDecklist(text: string): ParsedDeck {
     if (SKIPPED_SECTIONS.test(section)) return;
     const m = line.match(CARD);
     if (!m) { warnings.push(`Line ${i + 1} doesn't look like a card: "${line}"`); return; }
+    const tags = m[5] || "";
+    if (/\{noDeck\}/i.test(tags) || /^(maybe|side)/i.test(tags)) return;   // Moxfield maybeboard and sideboard categories
     const entry: DeckLine = { name: m[2].trim(), qty: m[1] ? parseInt(m[1], 10) : 1, line: i + 1 };
-    if (section.startsWith("commander") || /\*CMDR\*/i.test(m[4] || "")) commanders.push(entry.name);
+    if (section.startsWith("commander") || /\*CMDR\*/i.test(m[4] || "") || /(^|,)\s*commander\b/i.test(tags)) commanders.push(entry.name);
     else { entries.push({ entry, block }); blockHasCards = true; }
   });
 

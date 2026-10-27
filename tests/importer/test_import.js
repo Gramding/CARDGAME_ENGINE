@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path');
 const BASE = process.env.SITE_URL || 'http://127.0.0.1:4173/';
 const fixture = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/kefka.scryfall.json'), 'utf8')).data;
 const deckText = fs.readFileSync(path.resolve(__dirname, '../fixtures/kefka.txt'), 'utf8');
-const ELVES = { name: 'Llanowar Elves', layout: 'normal', mana_cost: '{G}', cmc: 1, type_line: 'Creature — Elf Druid', oracle_text: '{T}: Add {G}.', power: '1', toughness: '1', color_identity: ['G'], produced_mana: ['G'] };
+const ELVES = { name: 'Arbor Elf', layout: 'normal', mana_cost: '{G}', cmc: 1, type_line: 'Creature — Elf Druid', oracle_text: '{T}: Add {G}.', power: '1', toughness: '1', color_identity: ['G'], produced_mana: ['G'] };
 (async () => {
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
   const errs = [];
@@ -35,14 +35,14 @@ const ELVES = { name: 'Llanowar Elves', layout: 'normal', mana_cost: '{G}', cmc:
   for (const [w, h, shot] of [[1280, 900, 'import-desk.png'], [400, 860, 'import-phone.png']]) {
     const p = await page(w, h);
     // Kefka is fully modeled; a card the engine lacks and a misspelled one still show up
-    await check(p, deckText.replace('1 Mox Opal', '1 Llanowar Elves') + '\n1 Not A Real Card Name');
+    await check(p, deckText.replace('1 Mox Opal', '1 Arbor Elf') + '\n1 Not A Real Card Name');
     const status = await p.textContent('#status');
     const stats = await p.$$eval('.stat', els => els.map(e => e.textContent.trim()));
     const prompt = await p.inputValue('#prompt');
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     console.log(w, '| requests', p.requests, '| status:', status);
     console.log('   stats', stats.join(' · '), '| gaps', await p.$$eval('.gap', els => els.length), '| overflow', overflow, '| play hint:', await p.textContent('#playHint'));
-    for (const m of ['### Llanowar Elves', '### Not A Real Card Name', 'Commander: Kefka, Court Mage']) if (!prompt.includes(m)) fail('prompt lacks ' + m);
+    for (const m of ['### Arbor Elf', '### Not A Real Card Name', 'Commander: Kefka, Court Mage']) if (!prompt.includes(m)) fail('prompt lacks ' + m);
     if (prompt.includes('## Engine work needed first')) fail('prompt still asks for engine work');
     if (!stats.some(s => /^99modeled/.test(s))) fail('expected 99 modeled: ' + stats.join(','));
     if (!/Not found on Scryfall: Not A Real Card Name/.test(status)) fail('missing card not reported');
@@ -53,15 +53,15 @@ const ELVES = { name: 'Llanowar Elves', layout: 'normal', mana_cost: '{G}', cmc:
       await p.fill('#deckName', 'Kefka test');
       await Promise.all([p.waitForNavigation(), p.click('#play')]);
       await p.waitForTimeout(400);
-      const st = await p.evaluate(() => ({ deck: DECK.id, cmd: S.cmdZone, size: S.lib.length + S.hand.length, elves: S.lib.concat(S.hand).includes('Llanowar Elves'), fake: S.lib.concat(S.hand).includes('Not A Real Card Name'), elf: C['Llanowar Elves'], url: location.search }));
+      const st = await p.evaluate(() => ({ deck: DECK.id, cmd: S.cmdZone, size: S.lib.length + S.hand.length, elves: S.lib.concat(S.hand).includes('Arbor Elf'), fake: S.lib.concat(S.hand).includes('Not A Real Card Name'), elf: C['Arbor Elf'], url: location.search }));
       console.log('   playtester:', JSON.stringify({ ...st, elf: undefined }));
       if (st.deck !== 'imp-kefka-test' || st.cmd[0] !== 'Kefka, Court Mage // Kefka, Ruler of Ruin' || st.size !== 99 || !st.elves || st.fake) fail('playtester did not load the imported deck');
       if (!st.elf || st.elf.k !== 'creature' || st.elf.c !== 'G') fail('unmodeled card has no plain data');
       if (st.url) fail('the deck query stays in the address bar');
       // the elf plays by hand: cast it with a Forest-free board via the pool
-      await p.evaluate(() => { S.phase = 'play'; S.hand = ['Llanowar Elves']; S.pool.G = 1; cast('Llanowar Elves', 'hand'); });
+      await p.evaluate(() => { S.phase = 'play'; S.hand = ['Arbor Elf']; S.pool.G = 1; cast('Arbor Elf', 'hand'); });
       await p.waitForTimeout(200);
-      if (!(await p.evaluate(() => S.bf.some(x => x.name === 'Llanowar Elves')))) fail('an unmodeled creature could not be cast');
+      if (!(await p.evaluate(() => S.bf.some(x => x.name === 'Arbor Elf')))) fail('an unmodeled creature could not be cast');
     }
     await p.close();
   }

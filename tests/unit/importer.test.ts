@@ -13,7 +13,7 @@ const kefkaText = fixture("kefka.txt");
 const kefkaData: CardData[] = JSON.parse(fixture("kefka.scryfall.json")).data;
 const byName = (n: string) => kefkaData.find(c => c.name === n)!;
 const FOREST: CardData = { name: "Forest", layout: "normal", type_line: "Basic Land — Forest", oracle_text: "({T}: Add {G}.)", color_identity: ["G"], produced_mana: ["G"] };
-const ELVES: CardData = { name: "Llanowar Elves", layout: "normal", mana_cost: "{G}", cmc: 1, type_line: "Creature — Elf Druid", oracle_text: "{T}: Add {G}.", power: "1", toughness: "1", color_identity: ["G"], produced_mana: ["G"] };
+const ELVES: CardData = { name: "Arbor Elf", layout: "normal", mana_cost: "{G}", cmc: 1, type_line: "Creature — Elf Druid", oracle_text: "{T}: Untap target Forest.", power: "1", toughness: "1", color_identity: ["G"], produced_mana: ["G"] };
 
 /** A fetch stand-in that answers /cards/collection from the fixture. */
 const fakeFetch = (async (_url: string, init: { body: string }) => {
@@ -36,6 +36,13 @@ describe("parseDecklist", () => {
     const d = parseDecklist(`Commander\n1 Krark, the Thumbless (CMR) 189 *F*\n\nDeck\n1x Sol Ring (C21) 263\n4 Island\nLightning Bolt\n// a comment\n\nSideboard\n1 Pyroblast`);
     expect(d.commanders).toEqual(["Krark, the Thumbless"]);
     expect(d.cards.map(c => [c.name, c.qty])).toEqual([["Sol Ring", 1], ["Island", 4], ["Lightning Bolt", 1]]);
+  });
+
+  it("reads Moxfield category tags and their Commander category", () => {
+    const d = parseDecklist(`1 Ancestors' Aid (lci) [Inky pacakge]\n1 Nephilim Epochal (mbc) [Commander{top}]\n1 Leap (plst) 12 *F* [Inky pacakge,Draw]\n1 Sol Ring\n1 Lightning Bolt [Maybeboard{noDeck}{noPrice}]`);
+    expect(d.commanders).toEqual(["Nephilim Epochal"]);
+    expect(d.cards.map(c => c.name)).toEqual(["Ancestors' Aid", "Leap", "Sol Ring"]);
+    expect(d.warnings).toEqual([]);
   });
 
   it("takes a *CMDR* marker as the commander", () => {
@@ -72,7 +79,7 @@ describe("coverage", () => {
   });
 
   it("sorts cards the engine doesn't know into data only and needs scripting", () => {
-    const cov = coverage(["Forest", "Llanowar Elves", "Sol Ring"], new Map([["Forest", FOREST], ["Llanowar Elves", ELVES], ["Sol Ring", byName("Sol Ring")]]));
+    const cov = coverage(["Forest", "Arbor Elf", "Sol Ring"], new Map([["Forest", FOREST], ["Arbor Elf", ELVES], ["Sol Ring", byName("Sol Ring")]]));
     expect(cov.cards.map(c => c.status)).toEqual(["data", "script", "modeled"]);
     expect(cov.colors).toEqual(["G"]);
   });
@@ -80,13 +87,13 @@ describe("coverage", () => {
 
 describe("buildPrompt", () => {
   it("lists the missing cards with oracle text and the done criteria", async () => {
-    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Llanowar Elves\n1 Forest\n1 Sol Ring`);
-    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Llanowar Elves", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
+    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Arbor Elf\n1 Forest\n1 Sol Ring`);
+    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Arbor Elf", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
     const cov = coverage(deckNames(d), cards);
     const p = buildPrompt(d, cov);
     expect(p).toContain("Commander: Kefka, Court Mage");
-    expect(p).toContain("### Llanowar Elves");
-    expect(p).toContain("> {T}: Add {G}.");
+    expect(p).toContain("### Arbor Elf");
+    expect(p).toContain("> {T}: Untap target Forest.");
     expect(p).toContain("## Data only (1)");
     expect(p).toContain("## Needs scripting (1)");
     expect(p).not.toContain("### Sol Ring");
@@ -124,14 +131,14 @@ describe("commander guess", () => {
 
 describe("playDeck", () => {
   it("hands the playtester the full list, with plain data for unmodeled cards", () => {
-    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Llanowar Elves\n2 Forest\n1 Sol Ring`);
-    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Llanowar Elves", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
+    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Arbor Elf\n2 Forest\n1 Sol Ring`);
+    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Arbor Elf", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
     const pd = playDeck(d, coverage(deckNames(d), cards), cards, "Test deck");
     expect(pd.id).toBe("imp-test-deck");
     expect(pd.commanders).toEqual(["Kefka, Court Mage // Kefka, Ruler of Ruin"]);
-    expect(pd.cards).toEqual(["Llanowar Elves", "Forest", "Forest", "Sol Ring"]);
-    expect(Object.keys(pd.extra).sort()).toEqual(["Forest", "Llanowar Elves"]);
-    expect(pd.extra["Llanowar Elves"]).toMatchObject({ k: "creature", c: "G", mv: 1, pt: [1, 1], ty: ["Elf", "Druid"], manual: 1 });
+    expect(pd.cards).toEqual(["Arbor Elf", "Forest", "Forest", "Sol Ring"]);
+    expect(Object.keys(pd.extra).sort()).toEqual(["Arbor Elf", "Forest"]);
+    expect(pd.extra["Arbor Elf"]).toMatchObject({ k: "creature", c: "G", mv: 1, pt: [1, 1], ty: ["Elf", "Druid"], manual: 1 });
     expect(pd.extra["Forest"]).toMatchObject({ k: "land", mana: "G", amt: 1 });
   });
 

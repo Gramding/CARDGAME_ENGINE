@@ -29,6 +29,7 @@ const ARCHMAGE = "Archmage Emeritus", BREACH = "Underworld Breach", OGRE = "Trea
 const STAFF = "Wizard's Staff";
 const KEFKA = "Kefka, Court Mage // Kefka, Ruler of Ruin", KITTEN = "Displacer Kitten", GOGO = "Gogo, Mysterious Mime", IRMA = "Irma, Part-Time Mutant";
 const ORACLE = "Thassa's Oracle", SNAPCASTER = "Snapcaster Mage", DRAKE = "Gilded Drake", SUBTLETY = "Subtlety", CAVERN = "Cavern of Souls";
+const INK = "Ink-Treader Nephilim", EPOCHAL = "Nephilim Epochal", KINNAN = "Kinnan, Bonder Prodigy", CRADLE = "Gaea's Cradle", VITALITY = "Enduring Vitality";
 const RHYSTIC = "Rhystic Study", REMORA = "Mystic Remora", WISHCLAW = "Wishclaw Talisman", LED = "Lion's Eye Diamond", TOTEM = "Cursed Totem";
 const COLORS = "WUBRG", POOL_KEYS = ["W", "U", "B", "R", "G", "C", "A"];
 const COLOR_NAME = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green", C: "Colourless" };
@@ -124,13 +125,25 @@ function basePT(p) {
   const c = C[ident(p)] || {};
   return (backUp(p) && c.back ? c.back.pt : c.pt) || PT[ident(p)];
 }
-function toughness(p) { const b = basePT(p); return b ? b[1] + (p.counters || 0) + pumpOf(p) : 1; }
-function power(p) { const b = basePT(p); return b ? b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) : 0; }
+/* static bonuses: Faeburrow Elder's colours, Nephilim Epochal's Nephilim */
+function bonusOf(p) {
+  if (p.frog || p.setPT) return 0;
+  let b = 0;
+  if (ident(p) === "Faeburrow Elder") b += vividColors().length;
+  if (typesOf(p).includes("Nephilim") && S.bf.some(q => ident(q) === EPOCHAL && !q.frog)) b += S.bf.filter(q => q !== p && isCreatureP(q) && typesOf(q).includes("Nephilim")).length;
+  return b;
+}
+function toughness(p) { const b = basePT(p); return b ? b[1] + (p.counters || 0) + pumpOf(p) + bonusOf(p) : 1; }
+function power(p) { const b = basePT(p); return b ? b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) + bonusOf(p) : 0; }
 function dmgOf(p) { return p.dmg && p.dmg.turn === S.turn ? p.dmg.n : 0; }
 /* a permanent leaves the battlefield: commanders that die or get exiled go to the command zone */
 function leaveBf(p, to, why) {
   if (!S.bf.includes(p)) return;
   S.bf = S.bf.filter(x => x !== p);
+  if (to === "die" && !p.token && p.name === VITALITY && isCreatureP(p)) {   // it comes back as a plain enchantment
+    S.bf.push({ uid: S.nextId++, name: p.name, tapped: false, etbTurn: S.turn, notCreature: true });
+    log("dies", { c: short(p.name), why, note: "returned as an enchantment" }); bounceCleanup(p); return;
+  }
   if (!p.token) {
     if (COMMANDERS.includes(p.name) && to !== "hand") S.cmdZone.push(p.name);
     else if (to === "hand") S.hand.push(p.name); else if (to === "exile") S.ex.push({ n: p.name }); else toGy(p.name);
@@ -175,7 +188,7 @@ function dealDamage(t, n, src) {
 function isRalPW(p) { return !!p.flipped && p.name === "Ral, Monsoon Mage // Ral, Leyline Prodigy"; }
 function isCreatureP(p) {
   const c = C[ident(p)] || {};
-  if (c.k !== "creature" || p.asLand) return false;
+  if (c.k !== "creature" || p.asLand || p.notCreature) return false;
   return backUp(p) ? !!(c.back && c.back.k === "creature") : true;
 }
 function typesOf(p) { const c = C[ident(p)] || {}; return (backUp(p) && c.back ? c.back.ty : c.ty) || []; }
@@ -209,16 +222,17 @@ function oppLoses(i, n, src) {
 function damageEach(n) { for (const i of aliveOpps()) oppLoses(i, n); }
 function damageTarget(n) { oppLoses(S.target, n); }
 
-/* parse a cost like "1RU", "R{R/P}" into {g, W, U, B, R, G, phy} */
+/* parse a cost like "1RU", "R{R/P}", "{U/R}{R/G}" or "XGGG" into {g, W, U, B, R, G, phy, hyb, x} */
 function parseCost(s) {
-  const out = { g: 0, W: 0, U: 0, B: 0, R: 0, G: 0, phy: null };
+  const out = { g: 0, W: 0, U: 0, B: 0, R: 0, G: 0, phy: null, hyb: [], x: 0 };
   if (!s) return out;
   const m = s.match(/\{([WUBRG])\/P\}/); if (m) { out.phy = m[1]; s = s.replace(m[0], ""); }
+  s = s.replace(/\{([WUBRG])\/([WUBRG])\}/g, (_, a, b) => { out.hyb.push(a + b); return ""; });   // hybrid: either colour
   const g = s.match(/^\d+/); if (g) { out.g = +g[0]; s = s.slice(g[0].length); }
-  for (const ch of s) if (COLORS.includes(ch)) out[ch]++;
+  for (const ch of s) if (COLORS.includes(ch)) out[ch]++; else if (ch === "X") out.x++;
   return out;
 }
-function costTotal(c) { return c.g + [...COLORS].reduce((a, ch) => a + (c[ch] || 0), 0); }
+function costTotal(c) { return c.g + (c.hyb || []).length + [...COLORS].reduce((a, ch) => a + (c[ch] || 0), 0); }
 
 /* ------------------------------------------------------------------ mana payment */
 const PAIN = { "Mana Confluence": 1, "City of Brass": 1, "Fiery Islet": 1, "Ancient Tomb": 2 };   // pc: hurts for coloured mana only
@@ -254,19 +268,37 @@ function sourceColors(p, ctx) {
   if (id === "Gemstone Caverns") return p.luck ? COLORS : "C";
   if (id === "Spire of Industry") return "C" + (S.bf.some(isArtifactP) ? COLORS : "");
   if (id === CAVERN) { const k = ctx && C[ctx.name]; return "C" + (k && k.k === "creature" && (k.ty || []).includes(p.ctype) ? COLORS : ""); }
-  const m = (c.k === "land" || p.asLand) ? ((p.asLand ? C[p.name].mdfc : c.mana) || "C") : (c.mana || "");
-  return m === "*" ? COLORS : m === "ID" ? IDENT : m;
+  if (id === "Delighted Halfling") return "C" + (ctx && (C[ctx.name] || {}).leg ? COLORS : "");   // any colour only for legendary spells
+  if (id === CRADLE) return S.bf.some(isCreatureP) ? "G" : "";
+  let m = (c.k === "land" || p.asLand) ? ((p.asLand ? C[p.name].mdfc : c.mana) || "C") : (c.mana || "");
+  if (m === "vivid") m = vividColors();
+  m = m.replace("*", COLORS).replace("ID", IDENT);
+  if (isCreatureP(p) && onBf(VITALITY)) m = [...new Set(m + COLORS)].join("");   // Enduring Vitality: creatures tap for any colour
+  return m;
 }
+/* creatures can't use {T} abilities the turn they arrive, unless something gave them haste */
+function sick(p) { return isCreatureP(p) && p.etbTurn === S.turn && p.hasteTurn !== S.turn; }
 function isManaSource(p, ctx) {
   if (p.tapped || !sourceColors(p, ctx)) return false;
   if (ident(p) === "Springleaf Drum" && !drumCreature()) return false;
+  if (sick(p)) return false;
   return true;
 }
-function painFor(p, make) { const id = ident(p), c = C[id] || {}; return c.pc || id === "Spire of Industry" ? (make === "C" ? 0 : 1) : (PAIN[id] || 0); }
+/* Vivid (Bloom Tender, Faeburrow Elder): the colours among permanents you control */
+function vividColors() { return [...COLORS].filter(ch => S.bf.some(q => !q.asLand && cardColors(ident(q)).includes(ch))).join(""); }
+function vivid(p) { return (C[ident(p)] || {}).mana === "vivid"; }
+/* how much one tap of this source makes, before Kinnan and Utopia Sprawl */
+function srcAmt(p) {
+  if (ident(p) === CRADLE) return S.bf.filter(isCreatureP).length;
+  if (vivid(p)) return vividColors().length || 1;
+  return (p.asLand ? 1 : (C[ident(p)] || {}).amt) || 1;
+}
+function kinnans() { return S.bf.filter(q => ident(q) === KINNAN && !q.frog).length; }
+function painFor(p, make) { const id = ident(p), c = C[id] || {}; return c.pc || id === "Spire of Industry" ? (make === "C" ? 0 : (c.pc || 1)) : (PAIN[id] || 0); }
 /* color "X" asks for generic mana: any colour will do */
 function tapFor(p, color, ctx) {
   const id = ident(p), c = C[id] || {};
-  const amt = (p.asLand ? 1 : c.amt) || 1;
+  const amt = srcAmt(p);
   const cols = sourceColors(p, ctx);
   let make;
   if (color !== "X" && cols.includes(color)) make = color;
@@ -276,7 +308,11 @@ function tapFor(p, color, ctx) {
   const out = { make, pain: painFor(p, make) };
   if (id === "Springleaf Drum") { const cr = drumCreature(); if (cr) { cr.tapped = true; out.drum = short(cr.name); } }
   if (out.pain) S.life -= out.pain;
-  addMana(make, amt);
+  const vc = vivid(p) ? vividColors() : "";
+  if (vc && (color === "X" || vc.includes(color))) { for (const ch of vc) addMana(ch, 1); out.make = vc; }   // one of each colour
+  else addMana(make, amt);
+  if (c.k !== "land" && !p.asLand && kinnans()) { addMana(make, kinnans()); out.kinnan = kinnans(); }   // Kinnan: one more of a type it made
+  if (p.sprawl) addMana(p.sprawl, 1);   // Utopia Sprawl on this Forest
   if (c.sac) { S.bf = S.bf.filter(q => q !== p); if (!p.token) toGy(p.name); }
   return out;
 }
@@ -297,7 +333,7 @@ function bestFetchTarget(f, color) {
   return fetchTargets(f).filter(n => !(C[n] || {}).etb_tapped && (color === "X" || ((C[n] || {}).mana || "").includes(color))).sort((a, b) => score(a) - score(b))[0];
 }
 function enterLand(name, opts = {}) {
-  const c = C[name] || {}, p = { uid: S.nextId++, name, tapped: !!c.etb_tapped, etbTurn: S.turn };
+  const c = C[name] || {}, p = { uid: S.nextId++, name, tapped: !!c.etb_tapped || (!!c.town && S.turn > 3), etbTurn: S.turn };   // Starting Town: untapped on turns 1 to 3
   if (c.shock) { if (opts.shock === false) p.tapped = true; else { S.life -= 2; p.paidLife = 2; } }
   S.bf.push(p);
   return p;
@@ -312,6 +348,16 @@ function crackFetch(f, target, opts = {}) {
 function anyInf(inf) { return POOL_KEYS.some(k => inf[k]) || inf.T; }
 /* pay from the pool first, then untapped lands / rocks (single-colour first), then treasures */
 function autoPay(cost, dry, ctx) {
+  /* hybrid pips: try each way of splitting them into colours and pay with the first that works */
+  if (cost.hyb && cost.hyb.length) {
+    const k = Math.min(cost.hyb.length, 6);
+    for (let m = 0; m < (1 << k); m++) {
+      const c2 = { ...cost, hyb: [] };
+      cost.hyb.forEach((h, i) => { const ch = h[i < k ? (m >> i) & 1 : 0]; c2[ch] = (c2[ch] || 0) + 1; });
+      if (autoPay(c2, true, ctx).ok) return autoPay(c2, dry, ctx);
+    }
+    return { ok: false, tapped: [], lifePaid: 0 };
+  }
   const saved = JSON.stringify(S);
   const tapped = [];
   let pain = 0;
@@ -365,7 +411,7 @@ function autoPay(cost, dry, ctx) {
 function availableMana() {
   const relicLegends = onBf(RELIC) ? S.bf.filter(q => !q.tapped && isCreatureP(q) && (C[ident(q)] || {}).leg).length : 0;
   return Object.values(S.pool).reduce((a, b) => a + b, 0) + S.treasures + relicLegends + S.bf.filter(p => FETCH[p.name] && !p.tapped && fetchTargets(p.name).length).length +
-    S.bf.filter(p => isManaSource(p)).reduce((s, p) => s + ((p.asLand ? 1 : (C[ident(p)] || {}).amt) || 1), 0);
+    S.bf.filter(p => isManaSource(p)).reduce((s, p) => s + srcAmt(p) + (p.sprawl ? 1 : 0) + ((C[ident(p)] || {}).k !== "land" && !p.asLand ? kinnans() : 0), 0);
 }
 
 /* ------------------------------------------------------------------ game flow */
@@ -425,6 +471,7 @@ function startTurn() {
   const vaults = S.bf.filter(p => ident(p) === "Mana Vault" && p.tapped);
   if (vaults.length) { S.life -= vaults.length; log("Mana Vault", { life: -vaults.length, note: "tapped at draw step" }); }
   for (const p of S.bf) if (ident(p) === REMORA) S.stack.push(trig("remora", { src: p.uid }));   // cumulative upkeep
+  if (S.tTreasures) { S.treasures += S.tTreasures; S.tTreasures = 0; }   // tapped Treasures untap
   draw(1, "draw step");
   render();
 }
@@ -503,10 +550,15 @@ const TRIG = {
   remora:     { nm: "Remora", src: "Mystic Remora", rank: 1, label: () => "Mystic Remora: cumulative upkeep {1}" },
   gogo:       { nm: "Gogo", src: "Gogo, Mysterious Mime", rank: 5, label: () => "Gogo: become a copy of another creature" },
   irma:       { nm: "Irma", src: "Irma, Part-Time Mutant", rank: 5, label: () => "Irma: become a copy of another creature, +1/+1 counter" },
+  ink:        { nm: "Ink-Treader", src: "Ink-Treader Nephilim", rank: 7, label: it => `Ink-Treader Nephilim: copy ${short(it.name)} for each other creature` },
+  seeker:     { nm: "Spellseeker", src: "Spellseeker", rank: 6, label: () => "Spellseeker: find an instant or sorcery (MV 2 or less)" },
+  epochal:    { nm: "Epochal", src: "Nephilim Epochal", rank: 6, label: () => "Nephilim Epochal: find a Nephilim card" },
+  tataru:     { nm: "Tataru", src: "Tataru Taru", rank: 6, label: () => "Tataru Taru: you draw, an opponent may draw" },
   storm:      { nm: "Storm", rank: 8, label: it => `Storm: ${it.count} cop${it.count === 1 ? "y" : "ies"} of ${short(it.name)}` },
   krark:      { nm: "Krark", src: KRARK, rank: 9, label: it => `Krark: flip for ${short(it.name)}` },
 };
-const ETB_TRIG = { [MONK]: "monk", [DUAL]: "dualcaster", [RECRUITER]: "recruiter", [KEFKA]: "kefka", [ORACLE]: "oracle", [SNAPCASTER]: "snap", [DRAKE]: "drake", [SUBTLETY]: "subtlety" };
+const ETB_TRIG = { [MONK]: "monk", [DUAL]: "dualcaster", [RECRUITER]: "recruiter", [KEFKA]: "kefka", [ORACLE]: "oracle", [SNAPCASTER]: "snap", [DRAKE]: "drake", [SUBTLETY]: "subtlety",
+  "Spellseeker": "seeker", "Nephilim Epochal": "epochal", "Tataru Taru": "tataru" };
 /* the ETB trigger a permanent has: Kefka's back face has none, and a Frog from Amphibian Downpour has no abilities */
 function etbEff(p) { if (p.frog || (ident(p) === KEFKA && backUp(p))) return null; return ETB_TRIG[ident(p)] || null; }
 let holdPriority = false, askOrder = true, quiet = false;
@@ -535,6 +587,7 @@ function castTriggerItems(name, item) {
     const id = ident(p), m = mult(p, isIS);
     const add = eff => { for (let i = 0; i < m; i++) out.push(trig(eff, { src: p.uid })); };
     if (id === KITTEN && noncreature) add("kitten");
+    if (id === INK && isIS && item.target && item.target.kind === "perm" && item.target.uid === p.uid) out.push(trig("ink", { src: p.uid, name, spellId: item.id }));
     if (id === BIRGI && !p.flipped) add("birgi");
     else if (id === ELECTRO && isIS) add("electro");
     else if (id === VIVI && noncreature) add("vivi");
@@ -758,6 +811,7 @@ async function cast(name, zone, opts = {}) {
   let cost = parseCost(c.c);
   if (zone === "cmd") cost.g += 2 * S.cmd[name];
   if (zone === "flashback") cost = parseCost(c.fb || c.c);
+  if (zone === "harmonize") cost = parseCost("XGGGG");
   if (opts.cost) cost = parseCost(opts.cost);
   if (opts.phyLife) cost.phyLife = true;
   const rals = S.bf.filter(p => ident(p) === RAL && !p.flipped).length + (S.ralPlus && S.ralPlus.turn === S.turn ? S.ralPlus.n : 0);
@@ -765,7 +819,7 @@ async function cast(name, zone, opts = {}) {
   if (!opts.noSnap) snapshotUndo();
   let fuel = null;
   if (zone === "escape") { fuel = await chooseFuel(name); if (!fuel) { if (!opts.noSnap) dropSnapshot(); return false; } }
-  const add = await additionalCost(name, cost);   // bargain, X life, Redirect Lightning's 5 life or {2}
+  const add = await additionalCost(name, cost, opts, zone);   // bargain, X, convoke, X life, sacrifices, kicker
   if (!add) { if (!opts.noSnap) dropSnapshot(); return false; }
   let paid = { ok: true, tapped: [], lifePaid: 0 };
   if (!free) {
@@ -776,7 +830,7 @@ async function cast(name, zone, opts = {}) {
   // leave the zone
   if (zone === "hand") S.hand.splice(S.hand.indexOf(name), 1);
   else if (zone === "exile") S.ex = S.ex.filter(e => e.n !== name);
-  else if (zone === "escape" || zone === "flashback" || zone === "gycast") { S.gy.splice(S.gy.indexOf(name), 1); if (zone === "escape") exileFuel(fuel, name); }
+  else if (zone === "escape" || zone === "flashback" || zone === "gycast" || zone === "harmonize") { S.gy.splice(S.gy.indexOf(name), 1); if (zone === "escape") exileFuel(fuel, name); }
   else if (zone === "cmd") { S.cmdZone = S.cmdZone.filter(x => x !== name); S.cmd[name]++; }
   S.storm++; S.turnStats.casts++;
   if (isSpell(name)) S.turnStats.instsorc++;
@@ -784,8 +838,10 @@ async function cast(name, zone, opts = {}) {
   if (opts.back) item.back = true;
   if (opts.evoke) item.evoke = true;
   if (add.life) { S.life -= add.life; paid.lifePaid += add.life; }
-  if (add.sac) { leaveBf(add.sac, "die", "bargain"); }
+  if (add.sac) { leaveBf(add.sac, "die", "additional cost"); }
   if (c.burn) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseTarget(`${short(name)}: ${c.burn} damage to what?`, c.burn); if (quiet) S.repeatTarget = item.target; }
+  if (c.tgt) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt); if (quiet) S.repeatTarget = item.target; }
+  if (S.turnStats.casts === 2) for (const q of S.bf.filter(x => ident(x) === LOTHO && !x.frog)) { S.life -= 1; addTreasure(1); log("Lotho", { note: "second spell this turn", life: -1, treasures: 1 }); }
   if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.oppHand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
   S.stack.push(item);
   const ev = { c: opts.back ? HARNFEL : short(name), full: name, from: zone, cost: free ? (opts.alt || "free") : (opts.cost ? opts.cost + " (" + opts.alt + ")" : c.c || "0"), tapped: paid.tapped };
@@ -840,7 +896,11 @@ async function resolveSpell(it) {
   log("resolve", { c: stackLabel(it) });
   await resolveEffects(it.name, 1, it);
   if (it.name === "Borne Upon a Wind") S.flashTurn = S.turn;
-  if (it.kind === "spell") { if (it.from === "flashback") S.ex.push({ n: it.name }); else toGy(it.name); }
+  if (it.kind === "spell") {
+    if (it.from === "flashback" || it.from === "harmonize" || it.name === "Eldritch Evolution") S.ex.push({ n: it.name });
+    else if (it.name === "Green Sun's Zenith") { S.lib.push(it.name); shuffle(S.lib); log("shuffle", { c: "Green Sun's Zenith", note: "shuffled into the library" }); }
+    else toGy(it.name);
+  }
 }
 async function resolvePermanent(it) {
   const extra = {};
@@ -879,7 +939,7 @@ async function resolveTrigger(it) {
       toast(`Krark: won. A copy of ${short(it.name)} is on the stack.`, "win");
       await putTriggers([...magecraftItems(), ...flipWonItems()], `won flip, copy of ${short(it.name)}`);
     } else {
-      if (orig) { S.stack = S.stack.filter(x => x !== orig); if (orig.from === "flashback") S.ex.push({ n: orig.name }); else S.hand.push(orig.name); }
+      if (orig) { S.stack = S.stack.filter(x => x !== orig); if (orig.from === "flashback" || orig.from === "harmonize") S.ex.push({ n: orig.name }); else S.hand.push(orig.name); }
       log("Krark flip", { c: short(it.name), flip: "L", result: orig ? "back to hand" : "already gone" });
       toast(orig ? `Krark: lost. ${short(it.name)} went back to your hand.` : `Krark: lost, but ${short(it.name)} already left the stack.`, orig ? "warn" : "");
     }
@@ -1018,7 +1078,7 @@ function removeFromStack(it, to) {
   S.stack = S.stack.filter(x => x !== it);
   if (it.kind !== "spell") return;
   if (to === "hand") S.hand.push(it.name);
-  else if (to === "ex" || it.from === "flashback") S.ex.push({ n: it.name });
+  else if (to === "ex" || it.from === "flashback" || it.from === "harmonize") S.ex.push({ n: it.name });
   else toGy(it.name);
 }
 async function clearStack() {
@@ -1088,6 +1148,15 @@ async function etb(p) {   // things that happen as it enters; ETB triggers go on
     p.ctype = ($("cavT") && $("cavT").value) || pre;
     log("Cavern of Souls", { type: p.ctype });
   } else if (id === WISHCLAW) p.wish = 3;
+  else if (id === "Utopia Sprawl") {
+    const forests = S.bf.filter(q => landTypes(ident(q)).includes("F"));
+    const land = forests.length ? await pickPerm("Utopia Sprawl: enchant which Forest?", forests, "Enchant it", null, id) : null;
+    if (!land || land === "opp") { S.bf = S.bf.filter(q => q !== p); toGy(id); log("Utopia Sprawl", { note: "no Forest to enchant, to graveyard" }); toast("Utopia Sprawl needs a Forest (Bayou, Savannah, Taiga or Tropical Island).", "warn"); return; }
+    pendingArt = id;
+    const col = await openSheet("Utopia Sprawl: choose a colour", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""])) || (IDENT || "G")[0];
+    land.sprawl = col; p.on = land.uid;
+    log("Utopia Sprawl", { on: short(land.name), colour: col });
+  }
   else if (id === "Amphibian Downpour") {
     const t = await pickPerm("Amphibian Downpour: enchant which creature?", S.bf.filter(q => q !== p && isCreatureP(q)), "Enchant mine", "An opponent's creature", id);
     if (t && t !== "opp") { t.frog = true; p.on = t.uid; log("enchant", { c: "Amphibian Downpour", on: permLabel(t), note: "it's a 1/1 Frog with no abilities" }); }
@@ -1234,6 +1303,8 @@ async function resolveEffects(name, n, opts) {
   if (c.copier) await copyFromStack(name, name === "Return the Favor");
   if (c.k === "instant" && c.protect && name !== "Commandeer") await counterFromStack(name);
   if (KEFKA_SPELLS.includes(name)) for (let i = 0; i < n; i++) await kefkaSpell(name, opts || {});
+  if (TFX[name]) for (let i = 0; i < n; i++) await targetFx(name, opts || {});
+  if (NEPH_SPELLS.includes(name)) for (let i = 0; i < n; i++) await nephSpell(name, opts || {});
 }
 const KEFKA_SPELLS = ["Beseech the Mirror", "Chain of Vapor", "Commandeer", "Demonic Consultation", "Essence Flux", "Final Fortune", "Fire Covenant", "Flashback",
   "Reanimate", "Redirect Lightning", "Saw in Half", "Snuff Out", "Tainted Pact", "Toxic Deluge", "Unsubstantiate", "Yawgmoth's Will"];
@@ -1293,8 +1364,42 @@ async function legendRule() {   // Sakashima turns it off; otherwise keep one of
   }
 }
 /* additional costs paid as the spell is cast */
-async function additionalCost(name, cost) {
+async function additionalCost(name, cost, opts = {}, zone) {
   const out = { item: {} };
+  const c = C[name] || {};
+  if (cost.x && !opts.free) {   // X, then convoke or harmonize to pay for it
+    const box = document.createElement("div"); box.className = "form";
+    box.innerHTML = `<label for="xVal">X (mana you can make now: ${availableMana()})</label><input id="xVal" type="number" min="0" value="${Math.max(0, Math.min(4, availableMana() - costTotal(cost)))}" inputmode="numeric">`;
+    pendingArt = name;
+    const v = await openSheet(`${short(name)}: choose X`, box, [["Cast it", "go", "primary"], ["Cancel", null]]);
+    if (v !== "go") return null;
+    out.item.x = Math.max(0, Math.floor(+$("xVal").value || 0)); cost.g += out.item.x * cost.x;
+  }
+  if (c.convoke && !opts.free) {
+    const crs = S.bf.filter(q => isCreatureP(q) && !q.tapped);
+    if (crs.length) {
+      const idx = await multiPick(`${short(name)}: convoke? Tap creatures to pay {1} or {G} each`, crs.map(ident), crs.length, [], false, name, "Tap them and cast");
+      if (idx === null) return null;
+      const used = idx.map(i => crs[i]);
+      for (const q of used) { q.tapped = true; if (cost.G && cardColors(ident(q)).includes("G")) cost.G--; else if (cost.g) cost.g--; }
+      if (used.length) out.item.convoke = used.map(permLabel);
+    }
+  }
+  if (zone === "harmonize") {   // tap a creature to take its power off the generic part
+    const crs = S.bf.filter(q => isCreatureP(q) && !q.tapped && power(q) > 0);
+    const q = crs.length ? await pickPerm("Harmonize: tap a creature to reduce the cost by its power?", crs, "Tap it", null, name) : null;
+    if (q && q !== "opp") { q.tapped = true; cost.g = Math.max(0, cost.g - power(q)); out.item.harmonized = permLabel(q); }
+  }
+  if (name === "Eldritch Evolution") {
+    const crs = S.bf.filter(isCreatureP);
+    const q = crs.length ? await pickPerm("Eldritch Evolution: sacrifice which creature?", crs, "Sacrifice it", null, name) : null;
+    if (!q || q === "opp") { toast("Eldritch Evolution needs a creature to sacrifice.", "bad"); return null; }
+    out.sac = q; out.item.maxMv = 2 + ((C[ident(q)] || {}).mv || 0);
+  }
+  if (name === "Orim's Chant" && !opts.free) {
+    const v = await openSheet("Orim's Chant: pay kicker {W}?", null, [["Kick it", "kick", "primary"], ["No kicker", "no"]]);
+    if (v === "kick") { cost.W++; out.item.kicked = true; }
+  }
   if (name === "Beseech the Mirror") {
     const fodder = S.bf.filter(p => p.token || ["artifact", "enchantment"].some(k => cardTypes(ident(p)).includes(k)));
     if (fodder.length) {
@@ -1560,6 +1665,7 @@ async function resolveKefkaTrigger(it) {
   else if (e === "evoke") { const p = S.bf.find(q => q.uid === it.src); if (p) leaveBf(p, "die", "evoke"); else log("evoke", { note: `${short(it.name || SUBTLETY)} already left, so it stays` }); }
   else if (e === "remora") await remoraUpkeep(it);
   else if (e === "gogo" || e === "irma") await copyCreature(it, e);
+  else await resolveNephTrigger(it);
 }
 /* ------------------------------------------------------------------ combat
    Beginning of combat (Gogo, Irma), declare attackers (Kefka's attack trigger), then combat damage
@@ -1592,7 +1698,9 @@ async function combat() {
     const idx = await multiPick(`Attack opponent ${S.target + 1}: choose attackers (tap an opponent to change the target)`, cands.map(p => ident(p)), cands.length, pre, false, null, "Attack");
     if (!idx || !idx.length) { dropSnapshot(); return; }
     const att = idx.map(i => cands[i]);
-    att.forEach(p => { p.tapped = true; });
+    att.forEach(p => { if (!(C[ident(p)] || {}).vig) p.tapped = true; });   // vigilance keeps it untapped
+    const exalted = S.bf.filter(q => (C[ident(q)] || {}).exalted && !q.frog).length;
+    if (att.length === 1 && exalted) { pump(att[0], exalted); log("exalted", { c: permLabel(att[0]), bonus: `+${exalted}/+${exalted}` }); }
     S.combat = { turn: S.turn, step: "damage", attackers: att.map(p => p.uid), opp: S.target };
     log("attack", { attackers: att.map(permLabel), target: `opponent ${S.target + 1}` });
     const items = [];
@@ -1607,6 +1715,149 @@ async function combat() {
     if (dmg) dealDamage({ kind: "opp", i: S.combat.opp }, dmg, "combat");
     log("combat damage", { amount: dmg, target: `opponent ${S.combat.opp + 1}` });
     render(); saveLocal();
+  }
+}
+
+/* ------------------------------------------------------------------ Nephilim deck: five colours, mana creatures
+   Ink-Treader Nephilim copies a spell that targets only it for each other creature, so the cheap
+   creature cantrips below each resolve once per creature. Opponents' draws and spells, which the page
+   can't see, are buttons on the cards that care about them. */
+const LOTHO = "Lotho, Corrupt Shirriff", FOOD = "Food Token", SOLDIER = "Human Soldier Token";
+C[FOOD] = { n: FOOD, s: "Food", k: "artifact", c: "", token: 1 };
+C[SOLDIER] = { n: SOLDIER, s: "Human Soldier", k: "creature", c: "W", pt: [1, 1], ty: ["Human", "Soldier"], token: 1 };
+/* what each creature-targeting spell does to its target, then the cantrip part */
+const TFX = {
+  "Aphotic Wisps": { draw: 1, note: "black, fear" }, "Cerulean Wisps": { untap: 1, draw: 1, note: "blue" }, "Charge Through": { draw: 1, note: "trample" },
+  "Crimson Wisps": { haste: 1, draw: 1, note: "red" }, "Defiant Strike": { pp: 1, draw: 1 }, "Expedite": { haste: 1, draw: 1 }, "Leap": { draw: 1, note: "flying" },
+  "Niveous Wisps": { tap: 1, draw: 1, note: "white" }, "Shadow Rift": { draw: 1, note: "shadow" }, "Viridescent Wisps": { pp: 1, draw: 1, note: "green" },
+  "Might of the Meek": { draw: 1, mountainPP: 1, note: "trample" },
+  "Ancestors' Aid": { pp: 2, treasure: 1, note: "first strike" }, "Sudden Breakthrough": { pp: 2, treasure: 1, note: "first strike" },
+  "Reckless Ransacking": { pp: 1, pump: 2, treasure: 1 },
+  "Kari Zev's Expertise": { untap: 1, haste: 1, kari: 1 }, "Heat Shimmer": { copy: "shimmer" }, "Flash Photography": { copy: "photo" }, "Croaking Counterpart": { copy: "frog" },
+};
+async function chooseCreature(name, kind) {
+  const mine = S.bf.filter(p => kind === "permanent" ? true : isCreatureP(p));
+  const opts = mine.map(p => ({ t: { kind: "perm", uid: p.uid, label: short(ident(p)) }, label: `${permLabel(p)}${isCreatureP(p) ? ` · ${power(p)}/${toughness(p)}` : ""}${p.tapped ? " (tapped)" : ""}` }));
+  opts.push({ t: { kind: "other" }, label: `An opponent's ${kind}` });
+  let picked = opts.find(o => o.t.kind === "perm" && ident(S.bf.find(q => q.uid === o.t.uid)) === INK) || opts[0];
+  const wrap = document.createElement("div"); wrap.className = "picklist";
+  opts.forEach(o => { const b = document.createElement("button"); b.className = "pick" + (o === picked ? " sel" : "") + (o.t.kind === "perm" ? " mine" : ""); b.textContent = o.label; b.onclick = () => { picked = o; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
+  pendingArt = name;
+  await openSheet(`${short(name)}: target which ${kind}?`, wrap, [["Target it", "go", "primary"]]);
+  return picked.t;
+}
+function tokenCopy(p, extra = {}) {
+  const t = { uid: S.nextId++, name: ident(p), copyOf: ident(p), token: true, tapped: false, etbTurn: S.turn, ...extra };
+  if (backUp(p)) t.copyBack = true;
+  S.bf.push(t); return t;
+}
+/* one resolution of a creature-targeting spell; a target that left means the spell does nothing */
+async function targetFx(name, it) {
+  const fx = TFX[name], t = it.target || { kind: "other" };
+  const p = t.kind === "perm" ? S.bf.find(q => q.uid === t.uid) : null;
+  if (t.kind === "perm" && !p) { log("fizzle", { c: short(name), note: `${t.label} is gone` }); return; }
+  const ev = { c: short(name), target: p ? permLabel(p) : "an opponent's creature" };
+  if (p) {
+    if (fx.untap) p.tapped = false;
+    if (fx.tap) p.tapped = true;
+    if (fx.haste) p.hasteTurn = S.turn;
+    const pp = (fx.pp || 0) + (fx.mountainPP && S.bf.some(q => landTypes(ident(q)).includes("M")) ? 1 : 0);
+    if (pp) p.ppump = { turn: S.turn, n: ppumpOf(p) + pp };
+    if (fx.pump) pump(p, fx.pump);
+    if (fx.copy) {
+      const tok = tokenCopy(p, fx.copy === "shimmer" ? { temp: true, hasteTurn: S.turn } : fx.copy === "frog" ? { setPT: [1, 1] } : {});
+      ev.token = short(ident(p)) + (fx.copy === "frog" ? " (1/1 Frog)" : fx.copy === "shimmer" ? " (haste, exiled at end step)" : "");
+      render(); await tokenEtb([tok], ident(p), name);
+    }
+  } else if (fx.copy) ev.note = "copy of an opponent's creature: add it by hand";
+  if (fx.note) ev.gains = fx.note;
+  log("effect", ev);
+  if (fx.treasure) addTreasure(fx.treasure);
+  if (fx.draw) draw(fx.draw, short(name));
+  if (fx.kari) {   // may cast a spell with mana value 2 or less from hand for free
+    const ok = S.hand.filter(n => C[n] && C[n].k !== "land" && (C[n].mv || 0) <= 2);
+    if (ok.length) {
+      const n = await pickName("Kari Zev's Expertise: cast a spell with mana value 2 or less for free?", ok, ok[0], "Cast it free", name);
+      if (n) await cast(n, "hand", { free: true, alt: "Kari Zev's Expertise", noSnap: true });
+    }
+  }
+}
+/* Ink-Treader Nephilim: copy the spell for each other creature it could target */
+async function inkCopies(it) {
+  const ink = S.bf.find(q => q.uid === it.src);
+  const mine = S.bf.filter(q => q.uid !== it.src && (C[it.name].tgt === "permanent" ? isCreatureP(q) : isCreatureP(q)));
+  const box = document.createElement("div"); box.className = "form";
+  box.innerHTML = `<p class="info" style="margin:0">${mine.length} cop${mine.length === 1 ? "y" : "ies"} for your other creatures.</p><label for="inkOpp">Creatures your opponents control (each gets a copy too)</label><input id="inkOpp" type="number" min="0" value="${S.oppCreatures || 0}" inputmode="numeric">`;
+  pendingArt = INK;
+  await openSheet(`Ink-Treader Nephilim copies ${short(it.name)}`, box, [["Copy it", "go", "primary"]]);
+  const opp = Math.max(0, Math.floor(+$("inkOpp").value || 0)); S.oppCreatures = opp;
+  for (const q of mine) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "perm", uid: q.uid, label: short(ident(q)) } });
+  for (let i = 0; i < opp; i++) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "other" } });
+  S.turnStats.copies += mine.length + opp;
+  log("Ink-Treader Nephilim", { c: short(it.name), copies: mine.length + opp, opponents: opp || undefined, inkGone: ink ? undefined : true });
+}
+/* put a creature from the library onto the battlefield (Chord, Green Sun's Zenith, Nature's Rhythm, Eldritch Evolution) */
+async function creatureToBf(source, maxMv, ok = () => true) {
+  const pool = [...new Set(S.lib.filter(n => (C[n] || {}).k === "creature" && (C[n].mv || 0) <= maxMv && ok(n)))].sort((a, b) => short(a).localeCompare(short(b)));
+  const n = pool.length ? await pickName(`${short(source)}: put a creature with mana value ${maxMv} or less onto the battlefield`, pool, pool[0], "Put it in", source) : null;
+  shuffle(S.lib);
+  if (!n) { log("tutor", { c: short(source), found: "nothing", max: maxMv }); return; }
+  S.lib.splice(S.lib.indexOf(n), 1); shuffle(S.lib);
+  log("tutor", { c: short(source), found: short(n), to: "battlefield", max: maxMv });
+  await enterBf(n);
+}
+async function nephSpell(name, it) {
+  if (name === "Chord of Calling" || name === "Nature's Rhythm") await creatureToBf(name, it.x || 0);
+  else if (name === "Green Sun's Zenith") await creatureToBf(name, it.x || 0, n => cardColors(n).includes("G"));
+  else if (name === "Eldritch Evolution") await creatureToBf(name, it.maxMv || 2);
+  else if (name === "Silence" || name === "Orim's Chant") {
+    const note = name === "Silence" ? "your opponents can't cast spells this turn" : `target player can't cast spells this turn${it.kicked ? "; creatures can't attack" : ""}`;
+    log("effect", { c: short(name), note }); toast(`${short(name)}: ${note}.`, "win");
+  }
+}
+const NEPH_SPELLS = ["Chord of Calling", "Nature's Rhythm", "Green Sun's Zenith", "Eldritch Evolution", "Silence", "Orim's Chant"];
+/* an opponent draws: Smothering Tithe, Tataru Taru's Secretary and Gleaming Splendor care */
+async function oppDrew(i, why) {
+  S.oppDraws = S.oppDraws && S.oppDraws.turn === S.turn ? S.oppDraws : { turn: S.turn, n: [0, 0, 0] };
+  S.oppDraws.n[i]++;
+  log("opponent draws", { opp: i + 1, why, nth: S.oppDraws.n[i] });
+  for (const p of S.bf.filter(q => ident(q) === "Smothering Tithe")) {
+    pendingArt = "Smothering Tithe";
+    const v = await openSheet(`Smothering Tithe: does opponent ${i + 1} pay {2}?`, null, [["They don't: Treasure", "no", "primary"], ["They pay", "pay"]]);
+    if (v !== "pay") { addTreasure(1); log("Smothering Tithe", { treasures: 1 }); }
+  }
+  if (S.bf.some(q => ident(q) === "Tataru Taru" && !q.frog) && S.tataruTurn !== S.turn) {   // it's never their turn while you goldfish
+    S.tataruTurn = S.turn; S.tTreasures = (S.tTreasures || 0) + 1; log("Tataru Taru", { treasure: "tapped" });
+  }
+  if (S.oppDraws.n[i] === 2) for (const p of S.bf.filter(q => ident(q) === "Gleaming Splendor")) { addTreasure(1); log("Gleaming Splendor", { treasures: 1, opp: i + 1 }); }
+}
+async function recruit(source) {   // draw, discard; a nonland discard makes a 1/1 Human Soldier
+  draw(1, short(source));
+  if (!S.hand.length) return;
+  const n = await pickName(`${short(source)}: recruit. Discard a card`, S.hand, S.hand[S.hand.length - 1], "Discard it", source) || S.hand[S.hand.length - 1];
+  S.hand.splice(S.hand.indexOf(n), 1); toGy(n);
+  const land = (C[n] || {}).k === "land";
+  if (!land) S.bf.push({ uid: S.nextId++, name: SOLDIER, token: true, tapped: false, etbTurn: S.turn });
+  log("recruit", { c: short(source), discarded: short(n), soldier: !land || undefined });
+}
+async function resolveNephTrigger(it) {
+  const e = it.eff;
+  if (e === "ink") await inkCopies(it);
+  else if (e === "seeker") {
+    const pool = [...new Set(S.lib.filter(n => isSpell(n) && (C[n].mv || 0) <= 2))].sort((a, b) => short(a).localeCompare(short(b)));
+    const n = pool.length ? await pickName("Spellseeker: find an instant or sorcery with mana value 2 or less", pool, pool[0], "Take it", "Spellseeker") : null;
+    if (n) { S.lib.splice(S.lib.indexOf(n), 1); S.hand.push(n); }
+    shuffle(S.lib); log("tutor", { c: "Spellseeker", found: n ? short(n) : "nothing" });
+  } else if (e === "epochal") {
+    const pool = [...new Set(S.lib.filter(n => (C[n].ty || []).includes("Nephilim")))];
+    const n = pool.length ? await pickName("Nephilim Epochal: find a Nephilim card", pool, pool[0], "Take it", EPOCHAL) : null;
+    if (n) { S.lib.splice(S.lib.indexOf(n), 1); S.hand.push(n); }
+    shuffle(S.lib); log("tutor", { c: "Nephilim Epochal", found: n ? short(n) : "nothing" });
+  } else if (e === "tataru") {
+    draw(1, "Tataru Taru");
+    pendingArt = "Tataru Taru";
+    const v = await openSheet(`Tataru Taru: does opponent ${S.target + 1} draw a card?`, null, [["They draw", "yes", "primary"], ["They don't", null]]);
+    if (v === "yes") await oppDrew(S.target, "Tataru Taru");
   }
 }
 
@@ -1723,6 +1974,8 @@ async function handMenu(name) {
   if (name === "Step Through") btns.push(["Wizardcycle {2}", "cycle"]);
   if (name === "Otawara, Soaring City") btns.push(["Channel (bounce)", "channel"]);
   if (name === "Simian Spirit Guide") btns.push(["Exile for R", "ssg"]);
+  if (name === "Elvish Spirit Guide") btns.push(["Exile for G", "esg"]);
+  if (name === "Boseiju, Who Endures") btns.push(["Channel (destroy an opponent's artifact, enchantment or nonbasic land)", "boseiju"]);
   btns.push(["Discard", "discard"], ["Exile", "exile"], ["To library top", "top"], ["Cancel", null]);
   const v = await openSheet(`${name}  ${c.c ? "· " + c.c : ""}`, null, btns);
   if (!v) return;
@@ -1770,6 +2023,15 @@ async function handMenu(name) {
     const list = cardList(wiz, (nm, i, b) => { picked = nm; [...list.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); });
     const r = await openSheet("Wizardcycling: find a Wizard", list, [["Take it", "take", "primary"]]);
     if (r && picked) { S.lib.splice(S.lib.indexOf(picked), 1); shuffle(S.lib); S.hand.push(picked); log("wizardcycle", { found: short(picked) }); }
+  } else if (v === "esg") {
+    S.hand.splice(S.hand.indexOf(name), 1); S.ex.push({ n: name }); addMana("G", 1); log("Elvish Spirit Guide", { mana: "G" });
+  } else if (v === "boseiju") {
+    const legends = S.bf.filter(p => (C[ident(p)] || {}).leg && isCreatureP(p)).length;
+    const g = Math.max(0, 1 - legends);
+    const pay = autoPay({ g, G: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); toast(`Channel costs ${g ? g : ""}G right now.`, "bad"); return; }
+    S.hand.splice(S.hand.indexOf(name), 1); toGy(name);
+    log("channel Boseiju", { cost: (g || "") + "G", note: "destroyed an opponent's artifact, enchantment or nonbasic land; they may fetch a basic-typed land", tapped: pay.tapped });
   } else if (v === "ssg") {
     S.hand.splice(S.hand.indexOf(name), 1); S.ex.push({ n: name }); addMana("R", 1); log("Simian Spirit Guide", { mana: "R" });
   } else {
@@ -1834,6 +2096,7 @@ function bounceCleanup(p) {
   if (ident(p) === ELECTRO) { S.stack.push(trig("electroX", { src: p.uid })); toast("Electro left the battlefield: his trigger is on the stack. Resolve it to pay X.", "win"); }
   if (p.name === SAKA) { const ks = S.bf.filter(q => ident(q) === KRARK); ks.slice(1).forEach(q => { S.bf = S.bf.filter(z => z !== q); }); }
   if (p.staff) p.staff = false;
+  if (p.name === "Utopia Sprawl") for (const q of S.bf) if (q.uid === p.on) delete q.sprawl;
 }
 async function bfMenu(uid) {
   const p = S.bf.find(x => x.uid === uid); if (!p) return;
@@ -1854,6 +2117,18 @@ async function bfMenu(uid) {
   if (ident(p) === WISHCLAW && !p.tapped && (p.wish || 0) > 0) btns.unshift([`{1}, tap, remove a wish counter (${p.wish} left): search for a card`, "wish", "primary"]);
   if (ident(p) === RHYSTIC) btns.unshift(["An opponent cast a spell and didn't pay {1}: draw", "rhystic", "primary"]);
   if (ident(p) === REMORA) btns.unshift(["An opponent cast a noncreature spell and didn't pay {4}: draw", "remora", "primary"]);
+  if (ident(p) === "Deathrite Shaman" && !p.tapped && !sick(p)) btns.unshift(["Exile a land card from a graveyard: add one mana of any colour", "drsMana", "primary"], ["{B}, exile an instant or sorcery from a graveyard: each opponent loses 2", "drsB"], ["{G}, exile a creature card from a graveyard: gain 2 life", "drsG"]);
+  if (ident(p) === KINNAN) btns.push(["{5}{G}{U}: look at the top five, put a non-Human creature onto the battlefield", "kinnan"]);
+  if (ident(p) === "Esper Sentinel") btns.unshift([`An opponent's first noncreature spell this turn, they didn't pay {${Math.max(0, power(p))}}: draw`, "sentinel", "primary"]);
+  if (["Smothering Tithe", "Gleaming Splendor", "Tataru Taru"].includes(ident(p))) btns.unshift([`Opponent ${S.target + 1} drew a card`, "oppdrew", "primary"]);
+  if (ident(p) === "Gleaming Splendor") btns.push(["{2}{W}: you and an opponent each draw", "gleam"]);
+  if (ident(p) === "The Cabbage Merchant") {
+    btns.unshift(["An opponent cast a noncreature spell: create a Food", "food", "primary"]);
+    if (S.bf.filter(q => ident(q) === FOOD && !q.tapped).length >= 2) btns.push(["Tap two Foods: add one mana of any colour", "foodmana"]);
+  }
+  if (ident(p) === FOOD && !p.tapped) btns.unshift(["{2}, tap, sacrifice: gain 3 life", "eat", "primary"]);
+  if (ident(p) === "The Queen of Dale") btns.unshift(["An opponent cast their first noncreature spell this turn: recruit", "recruit", "primary"]);
+  if (ident(p) === LOTHO) btns.unshift(["An opponent cast their second spell this turn: lose 1, Treasure", "lotho", "primary"]);
   if (p.name === "Fiery Islet" && !p.tapped) btns.push(["{1}, sacrifice: draw", "islet"]);
   if (p.name === RAL && !p.flipped) btns.push(["Transform (won flip)", "ral"]);
   if (p.name === BIRGI && p.flipped && S.hand.length) btns.unshift(["Discard a card: exile the top two, play them this turn", "harnfel", "primary"]);
@@ -1949,7 +2224,50 @@ async function bfMenu(uid) {
     await tutor(WISHCLAW);
     giveAway(p, "Wishclaw Talisman");
     toast("An opponent controls Wishclaw Talisman now. It waits in your exile pile; take it back from there if it returns.");
-  } else if (v === "rhystic" || v === "remora") draw(1, short(p.name));
+  } else if (v === "rhystic" || v === "remora" || v === "sentinel") draw(1, short(p.name));
+  else if (v === "drsMana" || v === "drsB" || v === "drsG") {
+    const kind = v === "drsMana" ? "land" : v === "drsB" ? "instsorc" : "creature";
+    const fits = n => kind === "instsorc" ? isSpell(n) : (C[n] || {}).k === kind;
+    if (v !== "drsMana") { p.tapped = true; const pay = autoPay(v === "drsB" ? { B: 1 } : { G: 1 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast(`That costs {${v === "drsB" ? "B" : "G"}}.`, "bad"); return; } }
+    const mine = [...new Set(S.gy.filter(fits))];
+    const what = { land: "land", instsorc: "instant or sorcery", creature: "creature" }[kind];
+    const n = mine.length ? await pickName(`Deathrite Shaman: exile which ${what} card from your graveyard?`, mine, mine[0], "Exile it", "Deathrite Shaman") : null;
+    if (!n) { const ok = await openSheet(`No ${what} card in your graveyard. Exile one from an opponent's graveyard?`, null, [["Yes", "yes", "primary"], ["Cancel", null]]); if (ok !== "yes") { dropSnapshot(); return; } }
+    else { S.gy.splice(S.gy.lastIndexOf(n), 1); S.ex.push({ n }); }
+    const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = true;
+    if (v === "drsMana") {
+      pendingArt = "Deathrite Shaman";
+      const col = await openSheet("Deathrite Shaman: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""])) || (IDENT || "G")[0];
+      addMana(col, 1); log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's land", mana: col });
+    } else if (v === "drsB") { damageEach(2); log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's card", note: "each opponent loses 2" }); }
+    else { S.life += 2; log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's card", life: 2 }); }
+  } else if (v === "kinnan") {
+    const pay = autoPay({ g: 5, G: 1, U: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); toast("Kinnan's ability costs {5}{G}{U}.", "bad"); return; }
+    const top = S.lib.splice(0, 5);
+    const ok = top.filter(n => (C[n] || {}).k === "creature" && !(C[n].ty || []).includes("Human"));
+    const n = ok.length ? await pickName(`Kinnan: top five are ${top.map(short).join(", ")}. Put a non-Human creature onto the battlefield?`, ok, ok[0], "Put it in", KINNAN) : null;
+    const rest = shuffle(top.filter(x => x !== n)); S.lib.push(...rest);
+    log("Kinnan", { saw: top.map(short), put: n ? short(n) : "nothing", tapped: pay.tapped });
+    if (n) await enterBf(n);
+  } else if (v === "oppdrew") await oppDrew(S.target, short(p.name));
+  else if (v === "gleam") {
+    const pay = autoPay({ g: 2, W: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); toast("Gleaming Splendor's ability costs {2}{W}.", "bad"); return; }
+    draw(1, "Gleaming Splendor"); log("Gleaming Splendor", { tapped: pay.tapped }); await oppDrew(S.target, "Gleaming Splendor");
+  } else if (v === "food") { S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "Food", by: "The Cabbage Merchant" }); }
+  else if (v === "foodmana") {
+    pendingArt = "The Cabbage Merchant";
+    const col = await openSheet("Tap two Foods: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""]));
+    if (!col) { dropSnapshot(); return; }
+    S.bf.filter(q => ident(q) === FOOD && !q.tapped).slice(0, 2).forEach(q => { q.tapped = true; });
+    addMana(col, 1); log("The Cabbage Merchant", { tapped: "two Foods", mana: col });
+  } else if (v === "eat") {
+    p.tapped = true; const pay = autoPay({ g: 2 }, false);
+    if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("A Food costs {2} to eat.", "bad"); return; }
+    S.bf = S.bf.filter(q => q.uid !== uid); S.life += 3; log("Food", { life: 3, tapped: pay.tapped });
+  } else if (v === "recruit") await recruit(p.name);
+  else if (v === "lotho") { S.life -= 1; addTreasure(1); log("Lotho", { note: "an opponent's second spell", life: -1, treasures: 1 }); }
   else if (v === "islet") { p.tapped = true; const pay = autoPay({ g: 1, R: 0, U: 0 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Needs 1 more mana.", "bad"); return; } S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); log("Fiery Islet", { tapped: pay.tapped }); draw(1, "Fiery Islet"); }
   else if (v === "ral") transformRal(p);
   else if (v === "loy+" || v === "loy-") { p.loyalty = Math.max(0, (p.loyalty || 0) + (v === "loy+" ? 1 : -1)); log("loyalty", { c: "Ral", loyalty: p.loyalty }); }
@@ -1985,6 +2303,7 @@ async function zoneMenu(zone, name) {
   if (zone === "gy") {
     if (onBf(BREACH) && c.k !== "land") { if (parseCost(c.c).phy) btns.push(["Escape for 2 life", "escapelife", "primary"]); btns.push(["Escape (Breach)" + (parseCost(c.c).phy ? " paying mana" : ""), "escape", parseCost(c.c).phy ? "" : "primary"]); }
     if (hasFlashback(name)) btns.push([`Flashback {${c.fb || c.c || "0"}}`, "flashback", "primary"]);
+    if (name === "Nature's Rhythm") btns.push(["Harmonize {X}{G}{G}{G}{G}", "harmonize", "primary"]);
     if (S.ywill === S.turn) btns.unshift(c.k === "land" ? ["Play land (Yawgmoth's Will)", "ywland", "primary"] : ["Cast (Yawgmoth's Will)", "ywcast", "primary"]);
     btns.push(["Return to hand", "hand"], ["Exile", "exile"], ["Cancel", null]);
   } else if (zone === "ex") {
@@ -1999,6 +2318,7 @@ async function zoneMenu(zone, name) {
   if (!v) return;
   if (v === "escape" || v === "escapelife") { if (S.gy.length - 1 < 3) { toast("Escape needs three other cards in the graveyard.", "bad"); return; } return cast(name, "escape", v === "escapelife" ? { phyLife: true } : {}); }
   if (v === "flashback") return cast(name, "flashback");
+  if (v === "harmonize") return cast(name, "harmonize");
   if (v === "ywcast") return cast(name, "gycast");
   if (v === "ywland") { snapshotUndo(); await playLand(name, "gy"); render(); saveLocal(); return; }
   if (v === "takeback") {
@@ -2277,19 +2597,22 @@ function render() {
   $("krark").textContent = krarkRaw() >= KRARK_CAP ? KRARK_CAP + "+" : krarkTriggers();
   $("krarkHint").textContent = S.kDelta ? `auto ${auto} ${S.kDelta > 0 ? "+" : "−"} ${Math.abs(S.kDelta)}` : "auto";
   // pool pips: the deck's colours, any other colour that holds mana, colourless and any-colour
-  const pips = [...[...COLORS].filter(k => IDENT.includes(k) || S.pool[k] || inf[k]), "C", "A"];
-  if ($("poolPips").dataset.keys !== pips.join("")) {
-    $("poolPips").dataset.keys = pips.join("");
-    $("poolPips").innerHTML = pips.map(k => `<button class="pip" data-act="pool:${k},1" data-alt="pool:${k},-1" title="${k === "A" ? "Any colour" : COLOR_NAME[k]}: click +1, right-click −1"><span class="sym ${k}">${k === "A" ? "★" : k}</span><b id="p${k}">0</b></button>`).join("");
+  // decks of four or five colours show only the colours that hold mana, with + to add any of them
+  const many = IDENT.length > 3;
+  const pips = [...[...COLORS].filter(k => (!many && IDENT.includes(k)) || S.pool[k] || inf[k]), "C", "A"];
+  if ($("poolPips").dataset.keys !== pips.join("") + many) {
+    $("poolPips").dataset.keys = pips.join("") + many;
+    $("poolPips").innerHTML = pips.map(k => `<button class="pip" data-act="pool:${k},1" data-alt="pool:${k},-1" title="${k === "A" ? "Any colour" : COLOR_NAME[k]}: click +1, right-click −1"><span class="sym ${k}">${k === "A" ? "★" : k}</span><b id="p${k}">0</b></button>`).join("") +
+      (many ? `<button class="mini" data-act="addmana" title="Add one mana of a colour" aria-label="Add mana of a colour">+</button>` : "");
   }
   for (const k of pips) $("p" + k).textContent = show(k, S.pool[k]);
   document.querySelector(".sgrp.krark").hidden = !COMMANDERS.includes(KRARK) && !DECK.cards.includes(KRARK);
-  $("treas").textContent = show("T", S.treasures); $("life").textContent = S.life;
+  $("treas").textContent = show("T", S.treasures) + (S.tTreasures ? ` +${S.tTreasures}⤵` : ""); $("life").textContent = S.life;
   $("libCount").textContent = S.lib.length;
   $("avail").textContent = anyInf(inf) ? "∞" : availableMana();
   document.querySelectorAll("[data-act=loop]").forEach(b => { b.textContent = S.loop ? "End loop" : "Start loop"; b.classList.toggle("rec", !!S.loop); });
   // the status bar shows Combat for decks with combat triggers; every deck has it in the Game menu
-  const fights = [...COMMANDERS, ...DECK.cards].some(n => [KEFKA, GOGO, IRMA].includes(n));
+  const fights = [...COMMANDERS, ...DECK.cards].some(n => [KEFKA, GOGO, IRMA, INK, EPOCHAL].includes(n));
   document.querySelectorAll(".status [data-act=combat]").forEach(b => { b.textContent = combatLabel(); b.hidden = !fights; });
   $("opps").innerHTML = S.opp.map((o, i) => `<button class="opp ${S.target === i ? "tgt" : ""} ${o.life <= 0 || o.lib <= 0 ? "dead" : ""}" data-opp="${i}" aria-label="Opponent ${i + 1}"><b>${o.life}</b><small>lib ${o.lib}</small></button>`).join("");
   // mulligan bar
@@ -2604,6 +2927,9 @@ function runAct(act) {
   if (act === "keys") return keysSheet();
   if (act === "importdeck") { location.href = "./import/"; return; }
   if (act === "deck") return deckMenu();
+  if (act === "addmana") {
+    return openSheet("Add one mana of which colour?", null, [...COLORS, "C"].map(k => [COLOR_NAME[k], k])).then(k => { if (k) runAct(`pool:${k},1`); });
+  }
   if (act === "log") return drawerToggle();
   if (act === "notefocus") { drawerToggle(true); $("note").focus(); return; }
   if (act === "poolclear") { snapshotUndo(); S.pool = emptyPool(); if (S.inf) for (const k of POOL_KEYS) S.inf[k] = false; log("pool emptied"); render(); return; }
