@@ -24,6 +24,19 @@ const { table, check } = require('./lib');
   await go(() => cast('Deathrite Shaman', 'hand'));
   check('Deathrite Shaman {B/G} paid with green', await state(() => S.bf.some(p => p.name === 'Deathrite Shaman') && S.bf[0].tapped));
 
+  // every fetch land knows its land types; Windswept Heath finds Forests and Plains
+  check('Every fetch land has land types to search for', await state(() => Object.values(C).filter(c => c.fetch).every(c => /^[IMSPF]{2}$/.test(FETCH[c.n] || ''))));
+  await setup(['Green Sun\'s Zenith'], ['Windswept Heath']);
+  check('Windswept Heath finds Savannah, Taiga, Bayou, Tropical Island, Tundra and Scrubland', await state(() => ['Savannah', 'Taiga', 'Bayou', 'Tropical Island', 'Tundra', 'Scrubland'].every(n => fetchTargets('Windswept Heath').includes(n)) && !fetchTargets('Windswept Heath').includes('Volcanic Island')));
+  await go(() => cast("Green Sun's Zenith", 'hand')); await ev(() => { document.getElementById('xVal').value = 0; }); await press('Cast it');
+  check('Autopay cracks Windswept Heath for green', await state(() => !S.bf.some(p => p.name === 'Windswept Heath') && S.gy.includes('Windswept Heath') && S.life === 39 && S.stack.some(x => x.name === "Green Sun's Zenith")), await state(() => S.bf.map(p => p.name).join(',')));
+  await setup(['Island'], []);
+  await ev(() => { S.hand = ['Windswept Heath']; });
+  await go(() => playLand('Windswept Heath', 'hand'));
+  check('Playing it offers to crack it', (await T.title()).startsWith('Crack Windswept Heath'));
+  await press('Fetch it');
+  check('Cracking by hand put a Forest or Plains dual onto the battlefield', await state(() => S.bf.some(p => /Savannah|Taiga|Bayou|Tropical Island|Tundra|Scrubland/.test(p.name))));
+
   // mana creatures can't tap the turn they arrive, unless they have haste
   await setup(['Llanowar Elves', 'Expedite'], ['Taiga', 'Volcanic Island']);
   await go(() => cast('Llanowar Elves', 'hand')); await T.p.waitForTimeout(150);

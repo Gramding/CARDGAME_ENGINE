@@ -236,9 +236,8 @@ function costTotal(c) { return c.g + (c.hyb || []).length + [...COLORS].reduce((
 
 /* ------------------------------------------------------------------ mana payment */
 const PAIN = { "Mana Confluence": 1, "City of Brass": 1, "Fiery Islet": 1, "Ancient Tomb": 2 };   // pc: hurts for coloured mana only
-/* basic land types each fetch can find: Island, Mountain, Swamp, Plains, Forest */
-const FETCH = { "Arid Mesa": "MP", "Bloodstained Mire": "SM", "Wooded Foothills": "MF", "Flooded Strand": "PI", "Misty Rainforest": "FI",
-  "Polluted Delta": "IS", "Scalding Tarn": "IM", "Marsh Flats": "PS", "Verdant Catacombs": "SF" };
+/* basic land types each fetch can find (I, M, S, P, F for Island, Mountain, Swamp, Plains, Forest), from the card data */
+const FETCH = Object.fromEntries(Object.values(C).filter(c => c.fetch).map(c => [c.n, c.fetch]));
 const BASIC_TYPE = { Island: "I", Mountain: "M", Swamp: "S", Plains: "P", Forest: "F" };
 const HIGH_POWER = [SAKA, VEYRAN, BIRGI, ASHLING];                          // power 3+, out of Imperial Recruiter's reach
 function landTypes(n) { return (C[n] || {}).lt || BASIC_TYPE[n] || ""; }
