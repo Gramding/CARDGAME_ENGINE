@@ -625,7 +625,7 @@ const TRIG = {
   kitten:     { nm: "Kitten", src: "Displacer Kitten", rank: 3, label: () => "Displacer Kitten: flicker a nonland permanent" },
   ruler:      { nm: "Ruler", src: "Kefka, Court Mage // Kefka, Ruler of Ruin", rank: 2, label: it => `Kefka, Ruler of Ruin: draw ${it.n}` },
   kefka:      { nm: "Kefka", src: "Kefka, Court Mage // Kefka, Ruler of Ruin", rank: 6, label: it => `Kefka ${it.attack ? "attacks" : "enters"}: each player discards, you draw` },
-  oracle:     { nm: "Oracle", src: "Thassa's Oracle", rank: 6, label: () => "Thassa's Oracle: look at the top X, win if X ≥ library" },
+  oracle:     { nm: "Oracle", src: "Thassa's Oracle", rank: 6, wait: true, label: () => "Thassa's Oracle: look at the top X, win if X ≥ library" },   // wait: never resolves by itself, you respond to it
   snap:       { nm: "Snapcaster", src: "Snapcaster Mage", rank: 6, label: () => "Snapcaster Mage: give an instant or sorcery flashback" },
   drake:      { nm: "Drake", src: "Gilded Drake", rank: 6, label: () => "Gilded Drake: exchange control, or sacrifice it" },
   subtlety:   { nm: "Subtlety", src: "Subtlety", rank: 6, label: () => "Subtlety: put a creature or planeswalker spell on top or bottom" },
@@ -942,7 +942,9 @@ async function cast(name, zone, opts = {}) {
   await putTriggers(trigs, `${short(name)} was cast`);
   if (!below && !trigs.length && !isSpell(name)) item.auto = true;   // lone permanents resolve by themselves; spells wait so you can respond
   await settle();
-  if (S.stack.length && !quiet) toast(k ? `${short(name)} is on the stack with ${k} Krark trigger${k === 1 ? "" : "s"} above it. Resolve them one at a time, or respond.` : `${short(name)} is on the stack. Resolve it or respond.`);
+  const top = S.stack[S.stack.length - 1];
+  if (S.stack.length && !quiet) toast(k ? `${short(name)} is on the stack with ${k} Krark trigger${k === 1 ? "" : "s"} above it. Resolve them one at a time, or respond.`
+    : top.kind === "trigger" && TRIG[top.eff].wait ? `${stackLabel(top)}: the trigger is waiting. Respond now (Demonic Consultation, Tainted Pact) or resolve it.` : `${stackLabel(top)} is on the stack. Resolve it or respond.`);
   render(); saveLocal();
   return true;
 }
@@ -1007,7 +1009,8 @@ async function enterBf(name, extra = {}) {
   if (items.length) {
     const empty = !S.stack.length;
     await putTriggers(items, `${short(name)} entered`);
-    if (empty && items.length === 1) items[0].auto = true;
+    if (empty && items.length === 1 && !TRIG[eff || "evoke"].wait) items[0].auto = true;
+    if (items.some(t => TRIG[t.eff].wait)) toast(`${short(name)}'s trigger is waiting on the stack. Respond now (Demonic Consultation, Tainted Pact) or resolve it.`, "win");
   }
   return p;
 }

@@ -47,6 +47,23 @@ const { table, check } = require('./lib');
   await press('End as a win'); await press('Save result');
   check('Game ended as a Thassa\'s Oracle win', await state(() => S.phase === 'over' && S.result.method === "Thassa's Oracle"));
 
+  // the real line: Oracle resolves, its trigger waits, Tainted Pact exiles the library in response, then the trigger wins
+  await setup(["Thassa's Oracle", 'Tainted Pact'], ['Underground Sea', 'Volcanic Island', 'Watery Grave', 'Badlands']);
+  await go(() => cast("Thassa's Oracle", 'hand')); await T.p.waitForTimeout(250);
+  check("Oracle resolved but its trigger waits on the stack", await state(() => S.bf.some(p => p.name === "Thassa's Oracle") && S.stack.length === 1 && S.stack[0].eff === 'oracle' && document.getElementById('sheet').hidden));
+  check('A message says to respond', await state(() => /waiting/.test(document.getElementById('banner').textContent)), await state(() => document.getElementById('banner').textContent));
+  await go(() => cast('Tainted Pact', 'hand'));
+  check('Tainted Pact goes on top of the trigger', await state(() => S.stack.map(x => x.name || x.eff).join() === "oracle,Tainted Pact"));
+  await go(() => { resolveTop(); }); await press('Exile the whole library'); await T.p.waitForTimeout(150);
+  await go(() => { resolveTop(); }); await T.p.waitForTimeout(150);
+  check('Then the Oracle trigger wins', (await T.title()).includes('You win the game'), await T.title());
+  await press('Keep playing');
+
+  // Kitten flickering the Oracle also waits
+  await setup(['Sol Ring'], ['Displacer Kitten', "Thassa's Oracle", 'Underground Sea']);
+  await go(() => cast('Sol Ring', 'hand')); await go(() => { resolveTop(); }); await pick("Thassa's Oracle"); await press('Flicker it'); await T.p.waitForTimeout(150);
+  check('A flickered Oracle\'s trigger waits too', await state(() => S.stack.some(x => x.eff === 'oracle') && document.getElementById('sheet').hidden));
+
   // Thassa's Oracle with a real library: look at the top X = devotion
   await setup(["Thassa's Oracle"], ['Underground Sea', 'Volcanic Island', 'Irma, Part-Time Mutant']);
   const top2 = await state(() => S.lib.slice(0, 3));
