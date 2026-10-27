@@ -632,6 +632,7 @@ const TRIG = {
   remora:     { nm: "Remora", src: "Mystic Remora", rank: 1, label: () => "Mystic Remora: cumulative upkeep {1}" },
   gogo:       { nm: "Gogo", src: "Gogo, Mysterious Mime", rank: 5, label: () => "Gogo: become a copy of another creature" },
   irma:       { nm: "Irma", src: "Irma, Part-Time Mutant", rank: 5, label: () => "Irma: become a copy of another creature, +1/+1 counter" },
+  lotho:      { nm: "Lotho", src: "Lotho, Corrupt Shirriff", rank: 1, label: () => "Lotho: you lose 1 life and create a Treasure" },
   ink:        { nm: "Ink-Treader", src: "Ink-Treader Nephilim", rank: 7, label: it => `Ink-Treader Nephilim: copy ${short(it.name)} for each other creature` },
   seeker:     { nm: "Spellseeker", src: "Spellseeker", rank: 6, label: () => "Spellseeker: find an instant or sorcery (MV 2 or less)" },
   epochal:    { nm: "Epochal", src: "Nephilim Epochal", rank: 6, label: () => "Nephilim Epochal: find a Nephilim card" },
@@ -669,6 +670,7 @@ function castTriggerItems(name, item) {
     const id = ident(p), m = mult(p, isIS);
     const add = eff => { for (let i = 0; i < m; i++) out.push(trig(eff, { src: p.uid })); };
     if (id === KITTEN && noncreature) add("kitten");
+    if (id === "Lotho, Corrupt Shirriff" && S.turnStats.casts === 2) add("lotho");   // your second spell this turn
     if (id === INK && isIS && item.target && item.target.kind === "perm" && item.target.uid === p.uid) out.push(trig("ink", { src: p.uid, name, spellId: item.id }));
     if (id === BIRGI && !p.flipped) add("birgi");
     else if (id === ELECTRO && isIS) add("electro");
@@ -923,7 +925,6 @@ async function cast(name, zone, opts = {}) {
   if (add.sac) { leaveBf(add.sac, "die", "additional cost"); }
   if (c.burn) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseTarget(`${short(name)}: ${c.burn} damage to what?`, c.burn); if (quiet) S.repeatTarget = item.target; }
   if (c.tgt) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt); if (quiet) S.repeatTarget = item.target; }
-  if (S.turnStats.casts === 2) for (const q of S.bf.filter(x => ident(x) === LOTHO && !x.frog)) { S.life -= 1; addTreasure(1); log("Lotho", { note: "second spell this turn", life: -1, treasures: 1 }); }
   if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.oppHand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
   S.stack.push(item);
   const ev = { c: opts.back ? HARNFEL : short(name), full: name, from: zone, cost: free ? (opts.alt || "free") : (opts.cost ? opts.cost + " (" + opts.alt + ")" : c.c || "0"), tapped: paid.tapped };
@@ -1931,6 +1932,7 @@ async function recruit(source) {   // draw, discard; a nonland discard makes a 1
 async function resolveNephTrigger(it) {
   const e = it.eff;
   if (e === "ink") await inkCopies(it);
+  else if (e === "lotho") { S.life -= 1; addTreasure(1); log("Lotho", { note: "second spell this turn", life: -1, treasures: 1 }); toast("Lotho: you lost 1 life and made a Treasure.", "win"); }
   else if (e === "seeker") {
     const pool = [...new Set(S.lib.filter(n => isSpell(n) && (C[n].mv || 0) <= 2))].sort((a, b) => short(a).localeCompare(short(b)));
     const n = pool.length ? await pickName("Spellseeker: find an instant or sorcery with mana value 2 or less", pool, pool[0], "Take it", "Spellseeker") : null;

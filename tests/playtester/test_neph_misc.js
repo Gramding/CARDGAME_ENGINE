@@ -47,7 +47,16 @@ const { table, check } = require('./lib');
   // Lotho on your own second spell
   await setup(['Silence', 'Defiant Strike'], ['Lotho, Corrupt Shirriff', 'Tundra', 'Savannah']);
   await go(() => cast('Silence', 'hand')); await go(() => cast('Defiant Strike', 'hand')); await press('Target it');
-  check('Your second spell triggers Lotho', await state(() => S.life === 39 && S.treasures === 1));
+  check('Your second spell puts a Lotho trigger on the stack, above the spell', await state(() => S.stack[S.stack.length - 1].eff === 'lotho' && S.life === 40));
+  await resolve();
+  check('Resolving it: lose 1, Treasure, and a message', await state(() => S.life === 39 && S.treasures === 1 && /Lotho/.test(document.getElementById('banner').textContent)));
+  await setup(['Lotho, Corrupt Shirriff', 'Sol Ring'], ['Scrubland', 'Tundra', 'Bayou']);
+  await go(() => cast('Lotho, Corrupt Shirriff', 'hand')); await T.p.waitForTimeout(150); await go(() => cast('Sol Ring', 'hand'));
+  check('Lotho cast this turn triggers on the next spell', await state(() => S.stack.some(x => x.eff === 'lotho')));
+  await setup(['Silence', 'Sol Ring', 'Lotho, Corrupt Shirriff'], ['Tundra', 'Savannah', 'Scrubland', 'Bayou', 'Underground Sea', 'Lotho, Corrupt Shirriff']);
+  await go(() => cast('Silence', 'hand')); await T.resolveAll(); await go(() => cast('Sol Ring', 'hand')); await T.resolveAll();
+  await go(() => cast('Lotho, Corrupt Shirriff', 'hand'));
+  check('No trigger on the third spell', await state(() => S.turnStats.casts === 3 && !S.stack.some(x => x.eff === 'lotho') && S.turnLog.filter(e => e.a === 'Lotho').length === 1));
 
   // Orim's Chant kicked costs WW
   await setup(["Orim's Chant"], ['Tundra', 'Savannah']);
