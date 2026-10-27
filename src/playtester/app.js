@@ -239,7 +239,8 @@ const PAIN = { "Mana Confluence": 1, "City of Brass": 1, "Fiery Islet": 1, "Anci
 /* basic land types each fetch can find (I, M, S, P, F for Island, Mountain, Swamp, Plains, Forest), from the card data */
 const FETCH = Object.fromEntries(Object.values(C).filter(c => c.fetch).map(c => [c.n, c.fetch]));
 const BASIC_TYPE = { Island: "I", Mountain: "M", Swamp: "S", Plains: "P", Forest: "F" };
-const HIGH_POWER = [SAKA, VEYRAN, BIRGI, ASHLING];                          // power 3+, out of Imperial Recruiter's reach
+/* a creature card's printed power, as it is in the library (bonuses only count on the battlefield) */
+function printedPower(n) { return ((C[n] || {}).pt || PT[n] || [0])[0]; }
 function landTypes(n) { return (C[n] || {}).lt || BASIC_TYPE[n] || ""; }
 function fetchTargets(f) {
   const t = FETCH[f] || "";
@@ -1108,7 +1109,7 @@ async function monkReturn() {
   S.gy.splice(S.gy.indexOf(pf.get()), 1); S.hand.push(pf.get()); log("Pinnacle Monk", { returned: short(pf.get()) });
 }
 async function recruiterFind() {
-  const pool = [...new Set(S.lib.filter(n => C[n] && C[n].k === "creature" && !HIGH_POWER.includes(n)))].sort((a, b) => short(a).localeCompare(short(b)));
+  const pool = [...new Set(S.lib.filter(n => C[n] && C[n].k === "creature" && printedPower(n) <= 2))].sort((a, b) => short(a).localeCompare(short(b)));
   if (!pool.length) return;
   const pf = pickFrom(pool, pool.includes(KILN) ? KILN : pool[0]);
   const v = await openSheet("Imperial Recruiter: find a creature with power 2 or less", pf.list, [["Take it", "go", "primary"], ["Fail to find", null]]);
