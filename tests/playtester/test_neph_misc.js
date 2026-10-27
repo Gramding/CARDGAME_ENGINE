@@ -28,8 +28,36 @@ const { table, check } = require('./lib');
   // Gleaming Splendor: an opponent's second draw this turn
   await setup([], ['Gleaming Splendor', 'Tundra', 'Savannah', 'Scrubland']);
   await go(() => bfMenu(S.bf[0].uid)); await press('{2}{W}');
+  check('The ability targets two opponents by default', await state(() => [...document.querySelectorAll('.gsT:checked')].map(x => x.value).join() === '0,1'));
+  await press('Activate');
+  check('Both opponents drew and lost a library card; you drew nothing', await state(() => S.oppDraws.n[0] === 1 && S.oppDraws.n[1] === 1 && S.opp[0].lib === 91 && S.opp[1].lib === 91 && S.hand.length === 0));
   await go(() => bfMenu(S.bf[0].uid)); await press('Opponent 1 drew');
   check('Second opponent draw made a Treasure', await state(() => S.treasures === 1 && S.oppDraws.n[0] === 2));
+
+  // the combo: two Smothering Tithes and Gleaming Splendor on two opponents nets a Treasure a go and decks them
+  await setup([], ['Gleaming Splendor', 'Smothering Tithe', 'Smothering Tithe', 'Tundra']);
+  await ev(() => { S.treasures = 2; S.opp[0].lib = 4; S.opp[1].lib = 4; S.opp[2].lib = 0; });
+  await go(() => bfMenu(S.bf[0].uid)); await press('{2}{W}');
+  await ev(() => { document.getElementById('gsN').value = 50; document.getElementById('gsPay').value = 'never'; });
+  await press('Activate'); await T.p.waitForTimeout(200);
+  check('Looped until both targets ran out of cards', await state(() => S.opp[0].lib === 0 && S.opp[1].lib === 0 && S.turnLog.some(e => e.c === undefined && e.activations === 4)), await state(() => JSON.stringify(S.turnLog.filter(e => e.activations))));
+  check('Treasures: 2, minus 11 spent (Tundra paid one W), plus 4 a go from two Tithes, plus 2 from Gleaming (each opponent\'s second card) = 9', await state(() => S.treasures === 2 - 11 + 16 + 2), await state(() => String(S.treasures)));
+  check('Every opponent is out, so the win prompt names the deck-out', (await T.title()).startsWith('Every opponent is out'), await T.title());
+  await press('End as a win');
+  check('The method is preset to the Gleaming deck-out', await state(() => document.getElementById('egMethod').value === 'Deck-out (Gleaming Splendor)'));
+  await press('Save result');
+  await press('Close');
+
+  // you can be one of the two players
+  await setup([], ['Gleaming Splendor', 'Tundra', 'Savannah', 'Scrubland']);
+  await go(() => bfMenu(S.bf[0].uid)); await press('{2}{W}');
+  await ev(() => { document.querySelectorAll('.gsT').forEach(x => { x.checked = x.value === 'me' || x.value === '2'; }); });
+  await press('Activate');
+  check('You and opponent 3 each drew', await state(() => S.hand.length === 1 && S.opp[2].lib === 91));
+  await go(() => bfMenu(S.bf[0].uid)); await press('{2}{W}');
+  await ev(() => { document.querySelectorAll('.gsT').forEach(x => { x.checked = x.value === 'me'; }); });
+  await press('Activate');
+  check('One target is refused', await state(() => /exactly two target players/.test(document.getElementById('banner').textContent)));
 
   // Esper Sentinel, The Queen of Dale, Lotho, The Cabbage Merchant
   await setup(['Island'], ['Esper Sentinel', 'The Queen of Dale', 'Lotho, Corrupt Shirriff', 'The Cabbage Merchant']);

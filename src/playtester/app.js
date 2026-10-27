@@ -1937,15 +1937,53 @@ async function nephSpell(name, it) {
   }
 }
 const NEPH_SPELLS = ["Chord of Calling", "Nature's Rhythm", "Green Sun's Zenith", "Eldritch Evolution", "Silence", "Orim's Chant"];
+/* Gleaming Splendor's {2}{W}: two target players each draw. Aimed at two opponents with Smothering Tithe out it makes
+   Treasures and decks them, so it can repeat until it can't be paid or nobody is left to draw */
+async function gleamingSplendor() {
+  const alive = aliveOpps();
+  const players = [{ id: "me", label: "You" }, ...alive.map(i => ({ id: i, label: `Opponent ${i + 1} · library ${S.opp[i].lib}` }))];
+  const pre = alive.length >= 2 ? [S.target, ...alive.filter(i => i !== S.target)].filter(i => alive.includes(i)).slice(0, 2) : ["me", ...alive.slice(0, 1)];
+  const box = document.createElement("div"); box.className = "form";
+  box.innerHTML = `<p class="info" style="margin:0">Pick two players to draw a card each.</p>` +
+    players.map(pl => `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="gsT" value="${pl.id}" ${pre.includes(pl.id) ? "checked" : ""}> ${esc(pl.label)}</label>`).join("") +
+    `<label for="gsN">Activate how many times? (it stops when you can't pay or a target runs out of cards)</label><input id="gsN" type="number" min="1" value="1" inputmode="numeric">
+    <label for="gsPay">Do opponents pay {2} for Smothering Tithe?</label><select id="gsPay"><option value="ask">Ask me each time</option><option value="never">Never</option><option value="sometimes">Sometimes (${Math.round(OPP_SIM.pay["Smothering Tithe"] * 100)}%)</option></select>`;
+  pendingArt = "Gleaming Splendor";
+  const open = openSheet("Gleaming Splendor: {2}{W}, two target players each draw a card", box, [["Activate", "go", "primary"], ["Cancel", null]]);
+  $("gsPay").value = S.tithePay || "ask";
+  if ((await open) !== "go") return false;
+  const targets = [...document.querySelectorAll(".gsT:checked")].map(x => x.value === "me" ? "me" : +x.value);
+  if (targets.length !== 2) { toast("Gleaming Splendor needs exactly two target players.", "bad"); return false; }
+  S.tithePay = $("gsPay").value;
+  const n = Math.max(1, Math.floor(+$("gsN").value || 1));
+  const t0 = S.treasures;
+  let done = 0, stop = `activated ${n} time${n === 1 ? "" : "s"}`;
+  for (; done < n; done++) {
+    if (targets.some(t => t !== "me" && S.opp[t].lib <= 0)) { stop = "a target has no cards left"; break; }
+    const pay = autoPay({ g: 2, W: 1 }, false);
+    if (!pay.ok) { stop = "out of mana"; break; }
+    for (const t of targets) { if (t === "me") draw(1, "Gleaming Splendor"); else await oppDrew(t, "Gleaming Splendor"); }
+  }
+  log("Gleaming Splendor", { activations: done, targets: targets.map(t => t === "me" ? "you" : `opponent ${t + 1}`), stop, treasures: S.treasures - t0 });
+  if (!done) { toast(`Gleaming Splendor: ${stop === "out of mana" ? "its ability costs {2}{W}" : stop}.`, "bad"); return false; }
+  toast(`Gleaming Splendor: ${done} activation${done === 1 ? "" : "s"} (${stop}). Treasures ${S.treasures - t0 >= 0 ? "+" : ""}${S.treasures - t0}.`, "win");
+  render(); saveLocal();
+  return true;
+}
 /* an opponent draws: Smothering Tithe, Tataru Taru's Secretary and Gleaming Splendor care */
 async function oppDrew(i, why) {
   S.oppDraws = S.oppDraws && S.oppDraws.turn === S.turn ? S.oppDraws : { turn: S.turn, n: [0, 0, 0] };
   S.oppDraws.n[i]++;
-  log("opponent draws", { opp: i + 1, why, nth: S.oppDraws.n[i] });
+  const o = S.opp[i]; o.lib = Math.max(0, o.lib - 1);
+  log("opponent draws", { opp: i + 1, why, nth: S.oppDraws.n[i], library: o.lib });
+  if (!o.lib) toast(`Opponent ${i + 1} has no cards left in their library.`, "win");
   for (const p of S.bf.filter(q => ident(q) === "Smothering Tithe")) {
-    pendingArt = "Smothering Tithe";
-    const v = await openSheet(`Smothering Tithe: does opponent ${i + 1} pay {2}?`, null, [["They don't: Treasure", "no", "primary"], ["They pay", "pay"]]);
-    if (v !== "pay") { addTreasure(1); log("Smothering Tithe", { treasures: 1 }); }
+    let paid;   // S.tithePay: "ask" (default), "never" or "sometimes" (the opponents'-turn odds)
+    if ((S.tithePay || "ask") === "ask") {
+      pendingArt = "Smothering Tithe";
+      paid = (await openSheet(`Smothering Tithe: does opponent ${i + 1} pay {2}?`, null, [["They don't: Treasure", "no", "primary"], ["They pay", "pay"]])) === "pay";
+    } else paid = S.tithePay === "sometimes" && rnd() < OPP_SIM.pay["Smothering Tithe"];
+    if (!paid) { addTreasure(1); log("Smothering Tithe", { treasures: 1 }); } else log("Smothering Tithe", { note: `opponent ${i + 1} paid {2}` });
   }
   if (S.bf.some(q => ident(q) === "Tataru Taru" && !q.frog) && S.tataruTurn !== S.turn) {   // it's never their turn while you goldfish
     S.tataruTurn = S.turn; S.tTreasures = (S.tTreasures || 0) + 1; log("Tataru Taru", { treasure: "tapped" });
@@ -2373,11 +2411,7 @@ async function bfMenu(uid) {
     log("Kinnan", { saw: top.map(short), put: n ? short(n) : "nothing", tapped: pay.tapped });
     if (n) await enterBf(n);
   } else if (v === "oppdrew") await oppDrew(S.target, short(p.name));
-  else if (v === "gleam") {
-    const pay = autoPay({ g: 2, W: 1 }, false);
-    if (!pay.ok) { dropSnapshot(); toast("Gleaming Splendor's ability costs {2}{W}.", "bad"); return; }
-    draw(1, "Gleaming Splendor"); log("Gleaming Splendor", { tapped: pay.tapped }); await oppDrew(S.target, "Gleaming Splendor");
-  } else if (v === "food") { S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "Food", by: "The Cabbage Merchant" }); }
+  else if (v === "gleam") { if (!(await gleamingSplendor())) { dropSnapshot(); return; } } else if (v === "food") { S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "Food", by: "The Cabbage Merchant" }); }
   else if (v === "foodmana") {
     pendingArt = "The Cabbage Merchant";
     const col = await openSheet("Tap two Foods: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""]));
@@ -2493,7 +2527,7 @@ function noteMonkLoop(clone) {
     note: `Pinnacle Monk + ${short(clone)} with ${back} mana back per cast on turn ${S.turn}.` };
 }
 function deadOppsMethod() {
-  if (S.opp.some(o => o.lib <= 0)) return "Brain Freeze mill";
+  if (S.opp.some(o => o.lib <= 0)) return onBf("Gleaming Splendor") ? "Deck-out (Gleaming Splendor)" : "Brain Freeze mill";
   const last = [...S.turnLog].reverse().find(e => e.a === "damage" && e.from);
   if (last && /Electro/.test(last.from)) return "Electro";
   if (onBf(VIVI)) return "Vivi pings";
@@ -2523,6 +2557,7 @@ async function unfailablePrompt() {
 }
 async function endGame(preset) {
   const methods = DECK.id === "krark" ? ["Krark 100+ (unfailable)", "Vivi pings", "Brain Freeze mill", "Twinflame / Molten Krark army", "Dualcaster loop", "Pinnacle Monk loop", "Electro", "Burn copies", "Combat", "Other"]
+    : DECK.id === "nephilim" ? ["Deck-out (Gleaming Splendor)", "Ink-Treader draws", "Combat", "Other"]
     : ["Thassa's Oracle", "Kefka, Ruler of Ruin draws", "Brain Freeze mill", "Combat", "Other"];
   const sel = document.createElement("div"); sel.className = "form";
   sel.innerHTML = `<label for="egRes">Result</label><select id="egRes"><option value="win">I won</option><option value="stopped">Stopped (no win)</option><option value="loss">I lost</option></select>
