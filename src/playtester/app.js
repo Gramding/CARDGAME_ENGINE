@@ -67,7 +67,7 @@ function blankState() {
   return {
     id: "g" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
     started: new Date().toISOString(), rng: Math.floor(Math.random() * 4294967296), phase: "mull", turn: 0, storm: 0, landDrop: false,
-    life: 40, opp: [{ life: 40, lib: 92 }, { life: 40, lib: 92 }, { life: 40, lib: 92 }], target: 0, oppHand: 6,
+    life: 40, opp: [{ life: 40, lib: 92, hand: 7 }, { life: 40, lib: 92, hand: 7 }, { life: 40, lib: 92, hand: 7 }], target: 0,
     pool: emptyPool(), treasures: 0, kDelta: 0, deck: DECK.id,
     lib: [], hand: [], bf: [], gy: [], ex: [], cmd: Object.fromEntries(COMMANDERS.map(n => [n, 0])), cmdZone: [...COMMANDERS],
     stack: [], mulls: 0, opening: [], kept: null, bottomSel: [], turnLog: [], allTurns: [], result: null, nextId: 1,
@@ -536,7 +536,7 @@ async function nextTurn() {
   if (!(await cleanupDiscard())) { dropSnapshot(); return; }   // closing the discard sheet keeps the turn going
   endTurn();
   const extra = (S.extra || []).shift();
-  if (!extra) for (const o of S.opp) if (o.lib > 0) o.lib--;   // opponents only draw when they get a turn
+  if (!extra) for (const o of S.opp) if (o.lib > 0) { o.lib--; o.hand++; }   // opponents only draw when they get a turn
   startTurn(!extra);
   await afterOpponents();
   if (extra) { log("extra turn", { from: extra.from }); if (extra.lose) S.loseAt = S.turn; toast(`Extra turn from ${extra.from}.${extra.lose ? " You lose at its end step." : ""}`, "warn"); render(); }
@@ -563,6 +563,8 @@ const OPP_SIM = {
   noncreature: 0.75,     // chance a spell is noncreature
   cantrip: 0.35,         // chance a spell draws its caster a card
   offTurnDraw: 0.2,      // chance each other opponent draws a card during someone's turn
+  landDrop: 0.75,        // chance an opponent with cards in hand plays a land
+  maxHand: 7,            // they discard down to this at their end step
   pay: { "Rhystic Study": 0.3, "Mystic Remora": 0.05, "Esper Sentinel": 0.1, "Smothering Tithe": 0.25 },
 };
 let simOpps = true;
@@ -576,11 +578,17 @@ function simulateOpponents() {
   const taxed = src => { if (rnd() < (OPP_SIM.pay[src] || 0)) { out.paid[src] = (out.paid[src] || 0) + 1; return false; } return true; };
   const alive = aliveOpps();
   for (const i of alive) {
-    const spells = Array.from({ length: rollFrom(OPP_SIM.spells) }, () => rnd() < OPP_SIM.noncreature ? "noncreature" : "creature");
-    const draws = 1 + spells.filter(() => rnd() < OPP_SIM.cantrip).length;
+    // their hand: a land drop, then spells while they have cards (cantrips refill it), then cleanup
+    const o = S.opp[i], want = rollFrom(OPP_SIM.spells), spells = [];
+    if (o.hand > 0 && rnd() < OPP_SIM.landDrop) o.hand--;
+    let draws = 1;
+    while (spells.length < want && o.hand > 0) {
+      o.hand--; spells.push(rnd() < OPP_SIM.noncreature ? "noncreature" : "creature");
+      if (rnd() < OPP_SIM.cantrip && o.lib > 0) { draws++; o.hand++; o.lib--; }
+    }
+    o.hand = Math.min(o.hand, OPP_SIM.maxHand);
     const offTurn = alive.filter(j => j !== i && rnd() < OPP_SIM.offTurnDraw);
-    S.opp[i].lib = Math.max(0, S.opp[i].lib - (draws - 1));
-    for (const j of offTurn) S.opp[j].lib = Math.max(0, S.opp[j].lib - 1);
+    for (const j of offTurn) if (S.opp[j].lib > 0) { S.opp[j].lib--; S.opp[j].hand++; }
     out.opps.push({ i, spells, draws, offTurn });
     const nonc = spells.filter(k => k === "noncreature").length;
     for (const p of has("Rhystic Study")) spells.forEach(() => { if (taxed("Rhystic Study")) gain("Rhystic Study", "draw"); });
@@ -604,7 +612,7 @@ function simulateOpponents() {
     if (g.food) for (let k = 0; k < g.food; k++) S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn });
     if (g.life) S.life += g.life;
   }
-  log("opponents' turns", { opponents: out.opps.map(o => `${o.i + 1}: ${o.spells.length} spells (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}${o.offTurn.length ? ", off-turn draws by " + o.offTurn.map(j => j + 1).join(" and ") : ""}`), you: Object.entries(out.got).map(([src, g]) => `${short(src)}: ${Object.entries(g).map(([w, n]) => `${w} ${n}`).join(", ")}`), paid: Object.keys(out.paid).length ? out.paid : undefined });
+  log("opponents' turns", { opponents: out.opps.map(o => `${o.i + 1}: ${o.spells.length} spells (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}, ${S.opp[o.i].hand} in hand${o.offTurn.length ? ", off-turn draws by " + o.offTurn.map(j => j + 1).join(" and ") : ""}`), you: Object.entries(out.got).map(([src, g]) => `${short(src)}: ${Object.entries(g).map(([w, n]) => `${w} ${n}`).join(", ")}`), paid: Object.keys(out.paid).length ? out.paid : undefined });
   return out;
 }
 function oppSimLines(sim) {
@@ -627,7 +635,7 @@ async function afterOpponents() {
   }
   if (!sim.watched) return;
   const box = document.createElement("div"); box.className = "form";
-  const opps = sim.opps.map(o => `Opponent ${o.i + 1}: ${o.spells.length} spell${o.spells.length === 1 ? "" : "s"} (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}`);
+  const opps = sim.opps.map(o => `Opponent ${o.i + 1}: ${o.spells.length} spell${o.spells.length === 1 ? "" : "s"} (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}, ${S.opp[o.i].hand} in hand now`);
   const mine = oppSimLines(sim);
   box.innerHTML = `<p class="info" style="margin:0">${opps.map(esc).join("<br>")}</p><p style="margin:8px 0 0"><b>${mine.length ? mine.map(esc).join("<br>") : "Nothing for you this time."}</b></p>`;
   render();
@@ -976,7 +984,7 @@ async function cast(name, zone, opts = {}) {
   if (add.sac) { leaveBf(add.sac, "die", "additional cost"); }
   if (c.burn) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseTarget(`${short(name)}: ${c.burn} damage to what?`, c.burn); if (quiet) S.repeatTarget = item.target; }
   if (c.tgt) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt); if (quiet) S.repeatTarget = item.target; }
-  if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.oppHand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
+  if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.opp[S.target].hand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
   S.stack.push(item);
   const ev = { c: opts.back ? HARNFEL : short(name), full: name, from: zone, cost: free ? (opts.alt || "free") : (opts.cost ? opts.cost + " (" + opts.alt + ")" : c.c || "0"), tapped: paid.tapped };
   if (paid.lifePaid) ev.life = -paid.lifePaid;
@@ -1462,7 +1470,7 @@ async function resolveEffects(name, n, opts) {
   }
   if (c.jeska) {
     const mode = opts.mode || (commanderOut() ? "both" : "mana"), both = mode === "both";
-    const mana = both || mode === "mana" ? S.oppHand * n : 0; if (mana) addMana("R", mana);
+    const mana = both || mode === "mana" ? S.opp[S.target].hand * n : 0; if (mana) addMana("R", mana);
     const ex = [];
     if (both || mode === "exile") for (let i = 0; i < 3 * n && S.lib.length; i++) { const x = S.lib.shift(); S.ex.push({ n: x, play: true, until: S.turn }); ex.push(short(x)); }
     log("effect", { c: short(name), mana: "R" + mana, exiled: ex });
@@ -1764,8 +1772,8 @@ async function grantFlashback(source) {
 function hasFlashback(n) { return !!((C[n] || {}).fb || (S.fb && S.fb[n] === S.turn)); }
 /* what a cEDH opponent's random discard is, by card type: roughly the make-up of a cEDH hand */
 const OPP_HAND = [["instant", 30], ["land", 26], ["creature", 14], ["artifact", 13], ["sorcery", 11], ["enchantment", 5], ["planeswalker", 1]];
-function randomOppDiscard() {
-  if (S.oppHand <= 0) return "";   // the tracked hand is empty
+function randomOppDiscard(i) {
+  if (S.opp[i].hand <= 0) return "";   // that opponent's tracked hand is empty
   let r = rnd() * OPP_HAND.reduce((a, [, w]) => a + w, 0);
   for (const [k, w] of OPP_HAND) { if (r < w) return k; r -= w; }
   return "land";
@@ -1775,9 +1783,9 @@ async function kefkaDiscards(it) {
   // opponents discard at random (a type rolled from a typical cEDH hand); you choose your own card
   const alive = aliveOpps();
   S.kefkaOpp = [];
-  for (const i of alive) S.kefkaOpp[i] = randomOppDiscard();
+  for (const i of alive) S.kefkaOpp[i] = randomOppDiscard(i);
   const box = document.createElement("div"); box.className = "form";
-  const said = alive.map(i => `Opponent ${i + 1} discards ${S.kefkaOpp[i] ? "a" + (/^[aeiou]/i.test(KIND_WORD[S.kefkaOpp[i]]) ? "n " : " ") + KIND_WORD[S.kefkaOpp[i]].toLowerCase() : "nothing (empty hand)"}.`);
+  const said = alive.map(i => `Opponent ${i + 1} discards ${S.kefkaOpp[i] ? "a" + (/^[aeiou]/i.test(KIND_WORD[S.kefkaOpp[i]]) ? "n " : " ") + KIND_WORD[S.kefkaOpp[i]].toLowerCase() : "nothing (empty hand)"}${S.opp[i].hand > 0 ? ` (${S.opp[i].hand - 1} left in hand)` : ""}.`);
   box.innerHTML = `<p class="info" style="margin:0">${said.join("<br>")}</p>`;
   let mine = null;
   if (S.hand.length) {
@@ -1789,7 +1797,7 @@ async function kefkaDiscards(it) {
   const types = new Set();
   const ev = {};
   if (mine) { const n = mine.get(); S.hand.splice(S.hand.indexOf(n), 1); toGy(n); cardTypes(n).forEach(t => types.add(t)); ev.discarded = short(n); }
-  for (const i of alive) { const k = S.kefkaOpp[i]; if (k) { types.add(k); S.oppHand = Math.max(0, S.oppHand - 1); } }
+  for (const i of alive) { const k = S.kefkaOpp[i]; if (k) { types.add(k); S.opp[i].hand = Math.max(0, S.opp[i].hand - 1); } }
   ev.opponents = alive.map(i => S.kefkaOpp[i] || "nothing").join(", ");
   ev.types = types.size;
   log("Kefka", ev);
@@ -2093,7 +2101,7 @@ async function gleamingSplendor() {
 async function oppDrew(i, why) {
   S.oppDraws = S.oppDraws && S.oppDraws.turn === S.turn ? S.oppDraws : { turn: S.turn, n: [0, 0, 0] };
   S.oppDraws.n[i]++;
-  const o = S.opp[i]; o.lib = Math.max(0, o.lib - 1);
+  const o = S.opp[i]; if (o.lib > 0) o.hand++; o.lib = Math.max(0, o.lib - 1);
   log("opponent draws", { opp: i + 1, why, nth: S.oppDraws.n[i], library: o.lib });
   if (!o.lib) toast(`Opponent ${i + 1} has no cards left in their library.`, "win");
   for (const p of S.bf.filter(q => ident(q) === "Smothering Tithe")) {
@@ -2964,7 +2972,8 @@ function render() {
   // the status bar shows Combat for decks with combat triggers; every deck has it in the Game menu
   const fights = [...COMMANDERS, ...DECK.cards].some(n => [KEFKA, GOGO, IRMA, INK, EPOCHAL].includes(n));
   document.querySelectorAll(".status [data-act=combat]").forEach(b => { b.textContent = combatLabel(); b.hidden = !fights; });
-  $("opps").innerHTML = S.opp.map((o, i) => `<button class="opp ${S.target === i ? "tgt" : ""} ${o.life <= 0 || o.lib <= 0 ? "dead" : ""}" data-opp="${i}" aria-label="Opponent ${i + 1}"><b>${o.life}</b><small>lib ${o.lib}</small></button>`).join("");
+  $("opps").innerHTML = S.opp.map((o, i) => `<button class="opp ${S.target === i ? "tgt" : ""} ${o.life <= 0 || o.lib <= 0 ? "dead" : ""}" data-opp="${i}" aria-label="Opponent ${i + 1}"><b>${o.life}</b><small>lib ${o.lib} · h ${o.hand}</small></button>`).join("");
+  $("ohand").textContent = S.opp[S.target].hand;
   // mulligan bar
   const mull = S.phase === "mull";
   $("mullBar").hidden = !mull;
@@ -3343,7 +3352,7 @@ function runAct(act) {
   if (kind === "life") { snapshotUndo(); S.life += +arg; render(); return; }
   if (kind === "opp") { snapshotUndo(); const [what, d] = arg.split(","); const o = S.opp[S.target]; if (what === "life" && +d < 0) { oppLoses(S.target, -d); o.life = Math.max(0, o.life); } else o[what] = Math.max(0, o[what] + +d); log(`opponent ${S.target + 1} ${what} ${d}`); render(); return; }
   if (kind === "k") { S.kDelta += +arg; render(); return; }
-  if (kind === "ohand") { S.oppHand = Math.max(0, S.oppHand + +arg); $("ohand").textContent = S.oppHand; return; }
+  if (kind === "ohand") { const o = S.opp[S.target]; o.hand = Math.max(0, o.hand + +arg); render(); saveLocal(); return; }
   if (act === "imgs") { showImg = !showImg; try { localStorage.setItem("krark-playtest-images", showImg ? "on" : "off"); } catch (e) { /* per-browser only */ } render(); return; }
   const fns = { drill: () => drillToggle(true), drillExit: () => drillToggle(false), drillKeep: () => drillAnswer("keep"), drillMull: () => drillAnswer("mull"),
     drillBack: () => { if (drill) { drill.phase = "decide"; drill.bottom = []; renderDrill(); } }, clearStack, newgame: newGame, combat, mull: mulligan, keep, next: nextTurn, redo, resolve: resolveTop, resolveAll, loop: loopToggle, draw: () => { snapshotUndo(); draw(1, "draw (extra)"); render(); }, undo, search: librarySearch, end: endGame, note: addNote, export: exportGame, mill: () => { snapshotUndo(); const x = S.lib.shift(); if (x) { toGy(x); log("mill self", { c: short(x) }); } render(); } };
@@ -3395,12 +3404,11 @@ async function boot() {
   if (want && want !== ((prev && prev.deck) || "krark")) { history.replaceState(null, "", location.pathname); newGame(want); }
   else if (prev && prev.phase !== "over" && prev.lib) {
     useDeck(prev.deck || "krark");
-    S = prev; S.pool = { ...emptyPool(), ...S.pool }; if (!S.stack) S.stack = []; if (S.rng == null) S.rng = Math.floor(Math.random() * 4294967296);
+    S = prev; for (const o of S.opp) if (o.hand == null) o.hand = S.oppHand ?? 7; delete S.oppHand; S.pool = { ...emptyPool(), ...S.pool }; if (!S.stack) S.stack = []; if (S.rng == null) S.rng = Math.floor(Math.random() * 4294967296);
     const krarks = S.bf.filter(p => ident(p) === KRARK && p.token);
     if (krarks.length > KRARK_CAP) { const drop = new Set(krarks.slice(KRARK_CAP).map(p => p.uid)); S.bf = S.bf.filter(p => !drop.has(p.uid)); }
     if (S.turnLog.length > 3000) S.turnLog = S.turnLog.slice(-3000); render(); toast("Picked up your game in progress."); }
   else newGame(want || saved || "krark");
-  $("ohand").textContent = S.oppHand;
   if (window.claude && window.claude.use) {
     db = await window.claude.use("db");
     downloads = await window.claude.use("downloads");

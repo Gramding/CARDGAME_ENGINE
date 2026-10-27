@@ -4,10 +4,10 @@ const { table, check } = require('./lib');
 (async () => {
   const T = await table();
   const { ev, go, press, pick, state } = T;
-  // a fixed table: every opponent casts two noncreature spells, draws once, and both others draw off-turn; nobody pays
+  // a fixed table: every opponent plays a land, casts two noncreature spells, draws once, and both others draw off-turn; nobody pays
   const fixed = (extra = {}) => ev(x => {
     simOpps = true;
-    Object.assign(OPP_SIM, { spells: [[2, 100]], noncreature: 1, cantrip: 0, offTurnDraw: 1, pay: { "Rhystic Study": 0, "Mystic Remora": 0, "Esper Sentinel": 0, "Smothering Tithe": 0 } }, x);
+    Object.assign(OPP_SIM, { spells: [[2, 100]], noncreature: 1, cantrip: 0, offTurnDraw: 1, landDrop: 1, pay: { "Rhystic Study": 0, "Mystic Remora": 0, "Esper Sentinel": 0, "Smothering Tithe": 0 } }, x);
   }, extra);
   const pass = async () => { await go(() => { nextTurn(); }); await T.p.waitForTimeout(200); };
 
@@ -19,6 +19,7 @@ const { table, check } = require('./lib');
   check('A summary shows what the opponents did', (await T.title()) === 'While your opponents played' && /Rhystic Study: you drew 6/.test(await state(() => document.getElementById('sheetBody').textContent)), await state(() => document.getElementById('sheetBody').textContent));
   check('Rhystic 6 + Remora 6 + Sentinel 3 + your draw step = 16 cards', await state(h => S.hand.length === h + 16, h0), String(await state(() => S.hand.length)));
   check("Opponents' libraries: one draw each, plus two off-turn draws", await state(() => S.opp.every(o => o.lib === 92 - 1 - 2)));
+  check('Hands: 7, +1 draw step, -1 land, -2 spells, +2 off-turn draws = 7', await state(() => S.opp.every(o => o.hand === 7)), await state(() => S.opp.map(o => o.hand).join()));
   await press('OK');
   check('Remora still asks for its upkeep', await state(() => S.stack.some(x => x.eff === 'remora')));
 
@@ -49,6 +50,20 @@ const { table, check } = require('./lib');
   await T.setup([], ['Sol Ring'], 'nephilim');
   await fixed(); await pass();
   check('No summary when none of your cards care', !(await T.sheet()).open);
+
+  // opponents can only cast what they hold, cantrips refill, and cleanup trims to seven
+  await T.setup([], ['Rhystic Study'], 'nephilim');
+  await fixed({ spells: [[4, 100]], offTurnDraw: 0, landDrop: 1 });
+  await ev(() => { S.opp[0].hand = 0; S.opp[1].hand = 2; S.opp[2].hand = 12; });
+  await pass();
+  check('Empty hand: draw, land, nothing left to cast; two cards: land, two spells; twelve: four spells, trimmed to seven', await state(() => S.oppSim.opps.map(o => o.spells.length).join() === '0,2,4' && S.opp.map(o => o.hand).join() === '0,0,7'), await state(() => S.oppSim.opps.map(o => o.spells.length).join() + ' / ' + S.opp.map(o => o.hand).join()));
+  await press('OK');
+  await T.setup([], ['Rhystic Study'], 'nephilim');
+  await fixed({ spells: [[3, 100]], offTurnDraw: 0, landDrop: 0, cantrip: 1 });
+  await ev(() => { S.opp.forEach(o => { o.hand = 1; }); });
+  await pass();
+  check('With cantrips a two-card hand casts three spells and keeps one card', await state(() => S.oppSim.opps.every(o => o.spells.length === 3 && o.draws === 4) && S.opp.every(o => o.hand === 2 && o.lib === 92 - 4)), await state(() => S.opp.map(o => o.hand + '/' + o.lib).join()));
+  await press('OK');
   await T.setup([], ['Rhystic Study'], 'nephilim');
   await fixed(); await ev(() => { simOpps = false; });
   const h2 = await state(() => S.hand.length);
