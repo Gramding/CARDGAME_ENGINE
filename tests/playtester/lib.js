@@ -28,7 +28,7 @@ async function table() {
     },
     setup: async (hand, bf, deck = 'kefka') => { for (let i = 0; i < 5 && (await T.sheet()).open; i++) { await ev(() => closeSheet(null)); await p.waitForTimeout(80); } return ev(([hand, bf, deck]) => {
       try { localStorage.clear(); } catch (e) {}
-      askOrder = false; holdPriority = false; newGame(deck);
+      askOrder = false; holdPriority = false; simOpps = false; newGame(deck);
       S.lib = [...S.lib, ...S.hand].filter(n => !hand.includes(n) && !bf.includes(n));
       S.hand = hand; S.phase = 'play'; S.turn = 1;
       S.bf = bf.map(n => ({ uid: S.nextId++, name: n, tapped: false }));

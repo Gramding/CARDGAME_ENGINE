@@ -30,6 +30,12 @@ win checks. Mana covers all five colours, land types for fetches, shocks and pai
 
 Switch decks from the Game menu (**Switch deck**).
 
+Passing the turn plays your opponents' turns at random: how many spells each casts (creature or
+not) and how many cards they draw, on their turn and off it. Cards that watch opponents, such as
+Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe and Tataru Taru, trigger from that, and
+opponents sometimes pay the tax (rarely for Esper Sentinel and Mystic Remora). A summary shows what
+happened. The odds sit in `OPP_SIM` in `app.js`, and the log drawer has a switch to turn it off.
+
 - **Krark + Sakashima:** each Krark trigger flips on its own, with copies, Birgi, Vivi, Ral, Twinflame
   loops and the rest of the storm package.
 - **Kefka, Court Mage:** Kefka's discard-and-draw trigger and his {8} transform (Ruler of Ruin draws

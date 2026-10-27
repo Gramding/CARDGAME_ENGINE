@@ -462,11 +462,12 @@ async function keep() {
   startTurn();
   saveGameMeta();
 }
-function startTurn() {
+function startTurn(opponents) {
   S.turn++;
   S.storm = 0; S.landDrop = false;
   S.turnStats = newTurnStats(S.turn);
   S.ashlingRes = 0;
+  S.oppSim = opponents && simOpps ? simulateOpponents() : null;   // their turns happen before your untap step
   for (const p of S.bf) if (ident(p) !== "Mana Vault" && !(C[ident(p)] || {}).nountap) p.tapped = false;   // Mana Vault and Grim Monolith stay tapped unless you pay {4}
   const vaults = S.bf.filter(p => ident(p) === "Mana Vault" && p.tapped);
   if (vaults.length) { S.life -= vaults.length; log("Mana Vault", { life: -vaults.length, note: "tapped at draw step" }); }
@@ -503,7 +504,8 @@ async function nextTurn() {
   snapshotUndo(); endTurn();
   const extra = (S.extra || []).shift();
   if (!extra) for (const o of S.opp) if (o.lib > 0) o.lib--;   // opponents only draw when they get a turn
-  startTurn();
+  startTurn(!extra);
+  await afterOpponents();
   if (extra) { log("extra turn", { from: extra.from }); if (extra.lose) S.loseAt = S.turn; toast(`Extra turn from ${extra.from}.${extra.lose ? " You lose at its end step." : ""}`, "warn"); render(); }
   saveGameMeta(); saveLocal();
 }
@@ -519,6 +521,87 @@ function draw(n, why = "draw") {
 
 /* ------------------------------------------------------------------ casting */
 const RAL = "Ral, Monsoon Mage // Ral, Leyline Prodigy";
+/* ------------------------------------------------------------------ opponents' turns
+   Passing the turn plays each opponent's turn at random: spells cast (creature or not), cards drawn
+   on their turn and off it. Your cards that watch opponents trigger from that, and opponents pay the
+   taxes now and then. The odds live in OPP_SIM. */
+const OPP_SIM = {
+  spells: [[0, 15], [1, 30], [2, 30], [3, 15], [4, 10]],   // spells an opponent casts on their turn
+  noncreature: 0.75,     // chance a spell is noncreature
+  cantrip: 0.35,         // chance a spell draws its caster a card
+  offTurnDraw: 0.2,      // chance each other opponent draws a card during someone's turn
+  pay: { "Rhystic Study": 0.3, "Mystic Remora": 0.05, "Esper Sentinel": 0.1, "Smothering Tithe": 0.25 },
+};
+let simOpps = true;
+try { simOpps = localStorage.getItem("cge-sim-opps") !== "off"; } catch (e) { /* default on */ }
+function rollFrom(table) { let r = rnd() * table.reduce((a, [, w]) => a + w, 0); for (const [k, w] of table) { if (r < w) return k; r -= w; } return table[0][0]; }
+function simulateOpponents() {
+  const has = n => S.bf.filter(p => ident(p) === n && !p.frog);
+  const watch = ["Rhystic Study", REMORA, "Esper Sentinel", "Smothering Tithe", "Tataru Taru", "Gleaming Splendor", "The Queen of Dale", "The Cabbage Merchant", LOTHO];
+  const out = { opps: [], got: {}, paid: {}, recruits: 0, watched: watch.some(n => has(n).length) };
+  const gain = (src, what, n = 1) => { out.got[src] = out.got[src] || {}; out.got[src][what] = (out.got[src][what] || 0) + n; };
+  const taxed = src => { if (rnd() < (OPP_SIM.pay[src] || 0)) { out.paid[src] = (out.paid[src] || 0) + 1; return false; } return true; };
+  const alive = aliveOpps();
+  for (const i of alive) {
+    const spells = Array.from({ length: rollFrom(OPP_SIM.spells) }, () => rnd() < OPP_SIM.noncreature ? "noncreature" : "creature");
+    const draws = 1 + spells.filter(() => rnd() < OPP_SIM.cantrip).length;
+    const offTurn = alive.filter(j => j !== i && rnd() < OPP_SIM.offTurnDraw);
+    S.opp[i].lib = Math.max(0, S.opp[i].lib - (draws - 1));
+    for (const j of offTurn) S.opp[j].lib = Math.max(0, S.opp[j].lib - 1);
+    out.opps.push({ i, spells, draws, offTurn });
+    const nonc = spells.filter(k => k === "noncreature").length;
+    for (const p of has("Rhystic Study")) spells.forEach(() => { if (taxed("Rhystic Study")) gain("Rhystic Study", "draw"); });
+    for (const p of has(REMORA)) for (let k = 0; k < nonc; k++) if (taxed(REMORA)) gain(REMORA, "draw");
+    if (nonc) {
+      for (const p of has("Esper Sentinel")) if (taxed("Esper Sentinel")) gain("Esper Sentinel", "draw");
+      for (const p of has("The Queen of Dale")) { gain("The Queen of Dale", "recruit"); out.recruits++; }
+    }
+    for (const p of has("The Cabbage Merchant")) if (nonc) gain("The Cabbage Merchant", "food", nonc);
+    if (spells.length >= 2) for (const p of has(LOTHO)) { gain(LOTHO, "treasure"); gain(LOTHO, "life", -1); }
+    for (const p of has("Smothering Tithe")) for (let k = 0; k < draws + offTurn.length; k++) if (taxed("Smothering Tithe")) gain("Smothering Tithe", "treasure");
+    if (draws >= 2) for (const p of has("Gleaming Splendor")) gain("Gleaming Splendor", "treasure");
+    if (offTurn.length && has("Tataru Taru").length) gain("Tataru Taru", "tapped treasure");   // once each turn
+  }
+  // apply it: draws, Treasures (Tataru's come in tapped and untap in your untap step), Foods, life
+  for (const [src, g] of Object.entries(out.got)) {
+    if (g.draw) draw(g.draw, short(src));
+    if (g.recruit) draw(g.recruit, short(src));   // the discards are asked for once your turn starts
+    if (g.treasure) addTreasure(g.treasure);
+    if (g["tapped treasure"]) S.tTreasures = (S.tTreasures || 0) + g["tapped treasure"];
+    if (g.food) for (let k = 0; k < g.food; k++) S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn });
+    if (g.life) S.life += g.life;
+  }
+  log("opponents' turns", { opponents: out.opps.map(o => `${o.i + 1}: ${o.spells.length} spells (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}${o.offTurn.length ? ", off-turn draws by " + o.offTurn.map(j => j + 1).join(" and ") : ""}`), you: Object.entries(out.got).map(([src, g]) => `${short(src)}: ${Object.entries(g).map(([w, n]) => `${w} ${n}`).join(", ")}`), paid: Object.keys(out.paid).length ? out.paid : undefined });
+  return out;
+}
+function oppSimLines(sim) {
+  const word = { draw: n => `you drew ${n}`, recruit: n => `${n} recruit${n === 1 ? "" : "s"}`, treasure: n => `${n} Treasure${n === 1 ? "" : "s"}`, "tapped treasure": n => `${n} tapped Treasure${n === 1 ? "" : "s"}`, food: n => `${n} Food`, life: n => `${n} life` };
+  return [...new Set([...Object.keys(sim.got), ...Object.keys(sim.paid)])].map(src => {
+    const g = sim.got[src] || {}, paid = sim.paid[src];
+    return `${short(src)}: ${Object.entries(g).map(([w, n]) => word[w](n)).join(", ") || "nothing"}${paid ? ` (they paid ${paid} time${paid === 1 ? "" : "s"})` : ""}`;
+  });
+}
+/* after the opponents' turns: recruit discards, then a summary when your cards cared */
+async function afterOpponents() {
+  const sim = S.oppSim; if (!sim) return;
+  for (let k = 0; k < sim.recruits; k++) {
+    if (!S.hand.length) break;
+    const n = await pickName("The Queen of Dale: recruit. Discard a card", S.hand, S.hand[S.hand.length - 1], "Discard it", "The Queen of Dale") || S.hand[S.hand.length - 1];
+    S.hand.splice(S.hand.indexOf(n), 1); toGy(n);
+    const land = (C[n] || {}).k === "land";
+    if (!land) S.bf.push({ uid: S.nextId++, name: SOLDIER, token: true, tapped: false, etbTurn: S.turn });
+    log("recruit", { c: "The Queen of Dale", discarded: short(n), soldier: !land || undefined });
+  }
+  if (!sim.watched) return;
+  const box = document.createElement("div"); box.className = "form";
+  const opps = sim.opps.map(o => `Opponent ${o.i + 1}: ${o.spells.length} spell${o.spells.length === 1 ? "" : "s"} (${o.spells.filter(k => k === "noncreature").length} noncreature), drew ${o.draws}`);
+  const mine = oppSimLines(sim);
+  box.innerHTML = `<p class="info" style="margin:0">${opps.map(esc).join("<br>")}</p><p style="margin:8px 0 0"><b>${mine.length ? mine.map(esc).join("<br>") : "Nothing for you this time."}</b></p>`;
+  render();
+  await openSheet("While your opponents played", box, [["OK", null, "primary"]]);
+  render(); saveLocal();
+}
+
 /* ------------------------------------------------------------------ the stack
    S.stack holds spells, copies and triggered abilities; the last item is the top and resolves first.
    Triggers that trigger at the same time are ordered by the player before they go on the stack. */
@@ -2963,6 +3046,8 @@ document.addEventListener("keydown", ev => {   // R resolves the top of the stac
   if (S && S.stack.length && !drill) { ev.preventDefault(); resolveTop(); }
 });
 $("optHold").checked = holdPriority; $("optAsk").checked = askOrder;
+$("optSim").checked = simOpps;
+$("optSim").onchange = e => { simOpps = e.target.checked; setPref("cge-sim-opps", simOpps ? "on" : "off"); };
 $("optHold").onchange = e => { holdPriority = e.target.checked; setPref("krark-playtest-hold", holdPriority ? "on" : "off"); };
 $("optAsk").onchange = e => { askOrder = e.target.checked; setPref("krark-playtest-ask-order", askOrder ? "on" : "off"); };
 // a card image that fails to load falls back to the text tile
