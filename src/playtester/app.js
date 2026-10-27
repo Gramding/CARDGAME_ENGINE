@@ -110,10 +110,6 @@ function toGy(...names) { for (const n of names) { if (S.ywill === S.turn) S.ex.
 function onBf(name) { return S.bf.some(p => (p.copyOf || p.name) === name); }
 function countBf(name) { return S.bf.filter(p => (p.copyOf || p.name) === name).length; }
 function ident(p) { return p.copyOf || p.name; }
-const PT = { [KRARK]: [2, 2], [SAKA]: [3, 1], [VIVI]: [0, 3], [VEYRAN]: [2, 2], [PRODIGY]: [1, 3], [KILN]: [2, 2], [ARCHMAGE]: [2, 2], [BIRGI]: [3, 3],
-  [SCOUNDREL]: [1, 3], "Ral, Monsoon Mage // Ral, Leyline Prodigy": [1, 3], "Pinnacle Monk // Mystic Peak": [2, 2], "Dualcaster Mage": [2, 2], "Imperial Recruiter": [1, 1],
-  [OGRE]: [2, 3], "Samut, Tyrant of Naktamun": [2, 1], [ELECTRO]: [2, 3], [ASHLING]: [4, 4], "Simian Spirit Guide": [2, 2], "Phyrexian Metamorph": [0, 0] };
-const PROWESS = [PRODIGY, "Pinnacle Monk // Mystic Peak"];
 function pumpOf(p) { return p.pump && p.pump.turn === S.turn ? p.pump.n : 0; }
 function pump(p, n) { p.pump = { turn: S.turn, n: pumpOf(p) + n }; }
 function ppumpOf(p) { return p.ppump && p.ppump.turn === S.turn ? p.ppump.n : 0; }   // power only, like Gogo's +2/+0
@@ -123,7 +119,7 @@ function basePT(p) {
   if (p.frog) return [1, 1];
   if (p.setPT) return p.setPT;
   const c = C[ident(p)] || {};
-  return (backUp(p) && c.back ? c.back.pt : c.pt) || PT[ident(p)];
+  return backUp(p) && c.back ? c.back.pt : c.pt;
 }
 /* static bonuses: Faeburrow Elder's colours, Nephilim Epochal's Nephilim */
 function bonusOf(p) {
@@ -134,7 +130,11 @@ function bonusOf(p) {
   return b;
 }
 function toughness(p) { const b = basePT(p); return b ? b[1] + (p.counters || 0) + pumpOf(p) + bonusOf(p) : 1; }
-function power(p) { const b = basePT(p); return b ? b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) + bonusOf(p) : 0; }
+function power(p) {
+  const b = basePT(p); if (!b) return 0;
+  const kiln = ident(p) === KILN && !p.frog ? S.bf.filter(isArtifactP).length + S.treasures : 0;   // Storm-Kiln Artist: +1/+0 per artifact
+  return b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) + bonusOf(p) + kiln;
+}
 function dmgOf(p) { return p.dmg && p.dmg.turn === S.turn ? p.dmg.n : 0; }
 /* a permanent leaves the battlefield: commanders that die or get exiled go to the command zone */
 function leaveBf(p, to, why) {
@@ -240,7 +240,7 @@ const PAIN = { "Mana Confluence": 1, "City of Brass": 1, "Fiery Islet": 1, "Anci
 const FETCH = Object.fromEntries(Object.values(C).filter(c => c.fetch).map(c => [c.n, c.fetch]));
 const BASIC_TYPE = { Island: "I", Mountain: "M", Swamp: "S", Plains: "P", Forest: "F" };
 /* a creature card's printed power, as it is in the library (bonuses only count on the battlefield) */
-function printedPower(n) { return ((C[n] || {}).pt || PT[n] || [0])[0]; }
+function printedPower(n) { return ((C[n] || {}).pt || [0])[0]; }
 function landTypes(n) { return (C[n] || {}).lt || BASIC_TYPE[n] || ""; }
 function fetchTargets(f) {
   const t = FETCH[f] || "";
@@ -256,7 +256,7 @@ function drumCreature() {
   return S.bf.filter(q => !q.tapped && isCreatureP(q))
     .sort((a, b) => !!(C[ident(a)] || {}).leg - !!(C[ident(b)] || {}).leg)[0];   // keep legends free for Relic of Legends
 }
-function isArtifactP(p) { const c = C[ident(p)] || {}; return !p.flipped && (c.k === "artifact" || (c.kt || []).includes("artifact")); }
+function isArtifactP(p) { const c = C[ident(p)] || {}; return p.artifact || (!p.flipped && (c.k === "artifact" || (c.kt || []).includes("artifact"))); }
 /* ctx is the spell being paid for, when there is one (Cavern of Souls only helps creature spells of its type) */
 function sourceColors(p, ctx) {
   const id = ident(p), c = C[id] || {};
@@ -677,7 +677,7 @@ function castTriggerItems(name, item) {
     else if (id === ELECTRO && isIS) add("electro");
     else if (id === VIVI && noncreature) add("vivi");
     else if (id === RAL && isIS && !p.flipped) add("ral");
-    if (noncreature && isCreatureP(p)) { const pw = (PROWESS.includes(id) ? 1 : 0) + (p.staff ? 1 : 0); if (pw) pump(p, pw * m); }
+    if (noncreature && isCreatureP(p)) { const pw = ((C[id] || {}).prowess ? 1 : 0) + (p.staff ? 1 : 0); if (pw) pump(p, pw * m); }
   }
   if (isIS) {
     const k = krarkTriggers();
@@ -889,7 +889,7 @@ async function castRepeat(name, n, mode = "mana") {
   render(); saveLocal();
   if (S.unfailable === true) { S.unfailable = "asked"; await unfailablePrompt(); }
 }
-function instantSpeed(name) { const c = C[name]; return c.k === "instant" || c.flash || name === DUAL || S.flashTurn === S.turn; }
+function instantSpeed(name) { const c = C[name]; return c.k === "instant" || c.flash || S.flashTurn === S.turn; }
 async function cast(name, zone, opts = {}) {
   const c = C[name]; if (!c) return;
   const free = !!opts.free;
@@ -1209,7 +1209,7 @@ function pickFrom(names, preselect) {
 async function etb(p) {   // things that happen as it enters; ETB triggers go on the stack
   const id = p.name;
   if (id === "Chrome Mox") {
-    const opts = S.hand.filter(n => C[n] && !["land", "artifact"].includes(C[n].k) && n !== "Phyrexian Metamorph");
+    const opts = S.hand.filter(n => C[n] && !cardTypes(n).some(t => t === "land" || t === "artifact"));
     if (!opts.length) { log("imprint", { c: "Chrome Mox", card: "none" }); toast("Chrome Mox: nothing to imprint, so it makes no mana.", "warn"); return; }
     const pf = pickFrom(opts, opts.find(n => !isSpell(n) || n === "Simian Spirit Guide") || opts[0]);
     pendingArt = id;
@@ -1251,7 +1251,7 @@ async function etb(p) {   // things that happen as it enters; ETB triggers go on
    Phyrexian Metamorph copies any artifact or creature. Both pick as they enter. */
 async function chooseCopyOf(p) {   // only as it enters; the choice can't change later (use Undo to fix a misclick)
   const saka = p.name === SAKA;
-  const names = [...new Set(S.bf.filter(q => q !== p && C[ident(q)] && (saka ? isCreatureP(q) : isCreatureP(q) || C[ident(q)].k === "artifact")).map(ident))];
+  const names = [...new Set(S.bf.filter(q => q !== p && C[ident(q)] && (saka ? isCreatureP(q) : isCreatureP(q) || isArtifactP(q))).map(ident))];
   if (!names.length) return;
   const pf = pickFrom(names, p.copyOf && names.includes(p.copyOf) ? p.copyOf : names.includes(KRARK) ? KRARK : names[0]);
   const wrap = document.createElement("div"); wrap.append(pf.list);
@@ -1347,7 +1347,8 @@ async function resolveEffects(name, n, opts) {
   if (!n) return;
   const c = C[name];
   if (c.ritual) {
-    const col = c.rc || "R", k = (name === "Cabal Ritual" && S.gy.length >= 7 ? 5 : c.ritual) * n;   // threshold: seven cards in the graveyard
+    const base = name === "Cabal Ritual" && S.gy.length >= 7 ? 5 : name === "Rite of Flame" ? 2 + S.gy.filter(x => x === name).length : c.ritual;   // threshold; Rite counts Rites in graveyards
+    const col = c.rc || "R", k = base * n;
     addMana(col, k); log("effect", { c: short(name), mana: col + k, threshold: k > c.ritual * n || undefined });
   }
   if (c.jeska) {
@@ -1379,7 +1380,7 @@ async function resolveEffects(name, n, opts) {
     if (target) {
       const have = S.bf.filter(p => ident(p) === target).length, make = Math.max(0, Math.min(n, KRARK_CAP - have));
       const made = [];
-      for (let i = 0; i < make; i++) { const tok = { uid: S.nextId++, name: target, copyOf: target, token: true, temp: true, tapped: false }; S.bf.push(tok); made.push(tok); }
+      for (let i = 0; i < make; i++) { const tok = { uid: S.nextId++, name: target, copyOf: target, token: true, temp: true, tapped: false, hasteTurn: S.turn, artifact: name === "Molten Duplication" || undefined }; S.bf.push(tok); made.push(tok); }
       log("effect", { c: short(name), tokens: make, of: short(target), capped: make < n || undefined });
       await tokenEtb(made, target, name);
     }
@@ -2092,7 +2093,7 @@ async function tutor(source) {
   log("tutor", ev);
 }
 async function chooseCloneTarget(source, n) {
-  const ok = S.bf.filter(p => C[ident(p)] && (isCreatureP(p) || (source === "Molten Duplication" && C[ident(p)].k === "artifact")));
+  const ok = S.bf.filter(p => C[ident(p)] && (isCreatureP(p) || (source === "Molten Duplication" && isArtifactP(p))));
   const names = [...new Set(ok.map(ident))];
   if (!names.length) return null;
   // a choice made earlier in this chain (or this repeated-cast run) is reused while that card is still around
@@ -2163,7 +2164,7 @@ async function handMenu(name) {
     S.life -= 4; log("alt cost", { c: "Snuff Out", life: -4 });
     return cast(name, "hand", { free: true, alt: "4 life", noSnap: true });
   } else if (v === "channel") {
-    const legends = S.bf.filter(p => (C[ident(p)] || {}).leg && (C[ident(p)] || {}).k === "creature").length;
+    const legends = S.bf.filter(p => (C[ident(p)] || {}).leg && isCreatureP(p)).length;
     const g = Math.max(0, 3 - legends);
     const pay = autoPay({ g, R: 0, U: 1 }, false);
     if (!pay.ok) { dropSnapshot(); toast(`Channel costs ${g ? g : ""}U right now.`, "bad"); return; }
@@ -2270,7 +2271,7 @@ async function bfMenu(uid) {
   }
   if (FETCH[p.name] && !p.tapped) btns.push(["Crack (1 life)", "crack", "primary"]);
   if (!p.tapped && isManaSource(p)) btns.push(["Tap for mana", "mana", "primary"]);
-  if (ident(p) === VIVI && p.viviTurn !== S.turn) btns.push([`Add ${p.counters || 0} mana (Vivi)`, "vivi", "primary"]);
+  if (ident(p) === VIVI && p.viviTurn !== S.turn) btns.push([`Add ${Math.max(0, power(p))} mana (Vivi)`, "vivi", "primary"]);
   const untapCost = ident(p) === "Mana Vault" ? 4 : c.untapCost;
   if (untapCost && p.tapped) btns.push([`Pay {${untapCost}}: untap`, "vault"]);
   if (p.name === KEFKA && !p.flipped) btns.push(["{8}: each opponent sacrifices a permanent, transform", "kefka8"]);
@@ -2291,6 +2292,9 @@ async function bfMenu(uid) {
   if (ident(p) === "The Queen of Dale") btns.unshift(["An opponent cast their first noncreature spell this turn: recruit", "recruit", "primary"]);
   if (ident(p) === LOTHO) btns.unshift(["An opponent cast their second spell this turn: lose 1, Treasure", "lotho", "primary"]);
   if (p.name === "Fiery Islet" && !p.tapped) btns.push(["{1}, sacrifice: draw", "islet"]);
+  if (p.name === "Emergence Zone" && !p.tapped) btns.push(["{1}, sacrifice: cast spells as though they had flash this turn", "ezone"]);
+  if (p.name === "Minamo, School at Water's Edge" && !p.tapped) btns.push(["{U}, tap: untap target legendary permanent", "minamo"]);
+  if (ident(p) === SCOUNDREL && !p.tapped) btns.push(["{1}, tap, sacrifice another permanent: flip a coin", "scoundrel"]);
   if (p.name === RAL && !p.flipped) btns.push(["Transform (won flip)", "ral"]);
   if (p.name === BIRGI && p.flipped && S.hand.length) btns.unshift(["Discard a card: exile the top two, play them this turn", "harnfel", "primary"]);
   btns.push([p.tapped ? "Untap" : "Tap", "tap"]);
@@ -2359,7 +2363,7 @@ async function bfMenu(uid) {
     render(); await settle(); render(); saveLocal(); return;
   }
   if (v === "crack") { await crackMenu(p); }
-  else if (v === "vivi") { const x = p.counters || 0; p.viviTurn = S.turn; addMana("A", x); log("Vivi mana", { mana: x + " U/R" }); }
+  else if (v === "vivi") { const x = Math.max(0, power(p)); p.viviTurn = S.turn; addMana("A", x); log("Vivi mana", { mana: x + " U/R" }); }
   else if (v === "vault") { p.tapped = true; const pay = autoPay({ g: untapCost }, false); if (!pay.ok) { dropSnapshot(); toast(`Untapping ${short(p.name)} costs ${untapCost}.`, "bad"); return; } const v2 = S.bf.find(q => q.uid === uid); if (v2) v2.tapped = false; log("untap " + short(p.name), { tapped: pay.tapped }); }
   else if (v === "kefka8") {
     if (S.stack.length) { dropSnapshot(); toast("Kefka's ability is sorcery speed: resolve the stack first.", "warn"); return; }
@@ -2426,6 +2430,31 @@ async function bfMenu(uid) {
   } else if (v === "recruit") await recruit(p.name);
   else if (v === "lotho") { S.life -= 1; addTreasure(1); log("Lotho", { note: "an opponent's second spell", life: -1, treasures: 1 }); }
   else if (v === "islet") { p.tapped = true; const pay = autoPay({ g: 1, R: 0, U: 0 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Needs 1 more mana.", "bad"); return; } S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); log("Fiery Islet", { tapped: pay.tapped }); draw(1, "Fiery Islet"); }
+  else if (v === "ezone") {
+    p.tapped = true; const pay = autoPay({ g: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Emergence Zone needs {1}.", "bad"); return; }
+    S.bf = S.bf.filter(q => q.uid !== uid); toGy(p.name); S.flashTurn = S.turn;
+    log("Emergence Zone", { note: "spells have flash this turn", tapped: pay.tapped }); toast("You can cast spells as though they had flash this turn.", "win");
+  } else if (v === "minamo") {
+    const legs = S.bf.filter(q => q.uid !== uid && q.tapped && (C[ident(q)] || {}).leg);
+    if (!legs.length) { dropSnapshot(); toast("No tapped legendary permanent to untap.", "warn"); return; }
+    p.tapped = true; const pay = autoPay({ U: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Minamo needs {U}.", "bad"); return; }
+    const t = await pickPerm("Minamo: untap which legendary permanent?", legs, "Untap it", null, p.name);
+    if (t && t !== "opp") { t.tapped = false; log("Minamo", { untapped: permLabel(t), tapped: pay.tapped }); }
+  } else if (v === "scoundrel") {
+    const fodder = S.bf.filter(q => q.uid !== uid);
+    if (!fodder.length) { dropSnapshot(); toast("Tavern Scoundrel needs another permanent to sacrifice.", "warn"); return; }
+    p.tapped = true; const pay = autoPay({ g: 1 }, false);
+    if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast("Tavern Scoundrel needs {1}.", "bad"); return; }
+    const t = await pickPerm("Tavern Scoundrel: sacrifice which permanent?", S.bf.filter(q => q.uid !== uid), "Sacrifice it", null, SCOUNDREL);
+    if (!t || t === "opp") { dropSnapshot(); return; }
+    leaveBf(t, "die", "Tavern Scoundrel");
+    const win = rnd() < 0.5;
+    log("Tavern Scoundrel", { flip: win ? "W" : "L", tapped: pay.tapped });
+    if (win) { S.turnStats.flipsWon++; await putTriggers(flipWonItems(), "Tavern Scoundrel won a flip"); toast("Won the flip: Tavern Scoundrel's trigger is on the stack.", "win"); }
+    else toast("Lost the flip.", "warn");
+  }
   else if (v === "ral") transformRal(p);
   else if (v === "loy+" || v === "loy-") { p.loyalty = Math.max(0, (p.loyalty || 0) + (v === "loy+" ? 1 : -1)); log("loyalty", { c: "Ral", loyalty: p.loyalty }); }
   else if (v === "mana") {

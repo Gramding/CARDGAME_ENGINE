@@ -17,6 +17,7 @@ still be played by hand.
 | `src/importer/` | The deck importer: decklist parser, Scryfall lookup, coverage check and the request writer |
 | `web/import/` | The importer page (built by Vite into `site/import/`) |
 | `build.py` | Puts the playtester together into `site/index.html` |
+| `tools/audit_cards.py` | Checks every card in `cards.json` against Scryfall (cost, types, power and toughness, keywords, mana); run it after adding cards |
 | `tests/` | Unit tests (Vitest) in `unit/`, browser tests (Playwright) in `playtester/` and `importer/`, and `run.sh` to run the browser tests |
 | `sim/krark/` | The Python simulator, its reports and the human-versus-simulator comparison |
 | `.github/workflows/pages.yml` | Type checks, runs the unit tests, builds the site and publishes it to GitHub Pages on every push to `main` |
