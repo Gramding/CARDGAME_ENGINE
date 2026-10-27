@@ -16,6 +16,10 @@ const { table, check } = require('./lib');
   check("Passing the extra turn asks you to lose", (await T.title()).startsWith('Final Fortune: you lose'));
   await press('Lose the game'); await press('Save result');
   check('Game saved as a loss', await state(() => S.phase === 'over' && S.result.result === 'loss'));
+  check('Finishing the game offers the log download', (await T.title()).startsWith('Game saved as a loss on turn 2'), await T.title());
+  const [dl] = await Promise.all([T.p.waitForEvent('download', { timeout: 4000 }), press('Download the game log')]);
+  const body = JSON.parse(require('fs').readFileSync(await dl.path(), 'utf8'));
+  check('The download is the whole game as JSON', /^kefka-playtest-.*\.json$/.test(dl.suggestedFilename()) && body.meta.result.result === 'loss' && body.turns.length === 2, dl.suggestedFilename());
 
   // Yawgmoth's Will: cast Dark Ritual from the graveyard; it's exiled when it resolves
   await setup(["Yawgmoth's Will"], ['Underground Sea', 'Watery Grave', 'Sol Ring']);

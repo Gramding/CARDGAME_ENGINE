@@ -2098,6 +2098,9 @@ async function endGame(preset) {
   await saveGameMeta();
   saveLocal(); render();
   toast(`Game saved: ${S.result.result} on turn ${S.turn}.`);
+  const words = { win: "a win", loss: "a loss", stopped: "stopped" };
+  const next = await openSheet(`Game saved as ${words[S.result.result] || S.result.result} on turn ${S.turn}.`, null, [["Download the game log", "dl", "primary"], ["Close", null]]);
+  if (next === "dl") await exportGame();
 }
 function addNote() {
   const t = $("note").value.trim(); if (!t) return;
@@ -2236,11 +2239,21 @@ function saveTurn(turn, events, stats) {
 }
 function setSaveState(t, kind = "") { const el = $("saveState"); el.textContent = t; el.className = "savestate " + kind; }
 function fullExport() { return { meta: metaDoc(), id: S.id, turns: [...S.allTurns, ...(S.turnLog.length ? [{ turn: S.turn, events: S.turnLog, stats: S.turnStats, open: true }] : [])] }; }
+/* the whole game as a JSON file: through Claude's download prompt inside Claude, a plain browser
+   download elsewhere, and the clipboard when neither works */
 async function exportGame() {
   const json = JSON.stringify(fullExport(), null, 1);
+  const filename = `${DECK.id}-playtest-${S.started.slice(0, 10)}-${S.id}.json`;
   if (downloads) {
-    try { await downloads.save({ filename: `krark-playtest-${S.id}.json`, data: json }); toast("Export saved."); return; }
+    try { await downloads.save({ filename, data: json }); toast("Game log saved."); return; }
     catch (e) { if (e && e.code === "declined") return; }
+  } else {
+    try {
+      const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+      const a = document.createElement("a"); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast(`Game log downloaded as ${filename}.`); return;
+    } catch (e) { /* fall back to the clipboard */ }
   }
   try { await navigator.clipboard.writeText(json); toast("Game JSON copied to the clipboard."); }
   catch (e) { const ta = $("exportBox"); ta.hidden = false; ta.value = json; ta.select(); toast("Select-all and copy the JSON below.", "warn"); }
@@ -2364,7 +2377,7 @@ async function actionsMenu() {
   const items = S.phase === "mull"
     ? [["keep", "Keep this hand"], ["mull", "Mulligan"], ["newgame", "Reshuffle new game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["log", "Log and settings"], ["deck", "Switch deck"], ["importdeck", "Import a deck"]]
     : [["draw", "Draw a card"], ["search", "Search library"], ["combat", combatLabel()], ["mill", "Mill 1 (self)"], ["loop", S.loop ? "End loop" : "Start loop"], ["poolclear", "Empty mana pool"],
-       ["notefocus", "Add a note"], ["end", "End game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["export", "Export this game"], ["newgame", "New game"], ["log", "Log and settings"], ["deck", "Switch deck"], ["importdeck", "Import a deck"]];
+       ["notefocus", "Add a note"], ["end", "End game"], ["drill", "Mulligan drill"], ["imgs", showImg ? "Text view" : "Card images"], ["export", "Download the game log"], ["newgame", "New game"], ["log", "Log and settings"], ["deck", "Switch deck"], ["importdeck", "Import a deck"]];
   g.innerHTML = items.map(([a, l]) => `<button class="btn" data-act="${a}">${esc(l)}</button>`).join("");
   await openSheet(S.phase === "mull" ? "Opening hand" : `Turn ${S.turn} · playtester actions`, g, [["Close", null]]);
 }

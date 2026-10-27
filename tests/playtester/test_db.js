@@ -15,7 +15,7 @@ const PAGE = process.env.PAGE || 'file://' + require('path').resolve(__dirname, 
   await ev(() => keep()); await p.waitForTimeout(100);
   await ev(() => { holdPriority = false; }); await ev(() => playLand('Mountain', 'hand')); await ev(() => cast('Rite of Flame', 'hand')); await ev(() => resolveAll());
   await ev(() => nextTurn()); await ev(() => cast('Lotus Petal', 'hand'));
-  ev(() => endGame()); await p.waitForTimeout(200);
+  await ev(() => { endGame(); }); await p.waitForTimeout(200);
   await ev(() => [...document.querySelectorAll('#sheetButtons button')].find(x => x.textContent.startsWith('Save')).click());
   await p.waitForTimeout(5500);   // past the delayed autosave
   const w = await ev(() => window.__w);
