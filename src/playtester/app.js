@@ -276,6 +276,18 @@ function sourceColors(p, ctx) {
   if (isCreatureP(p) && onBf(VITALITY)) m = [...new Set(m + COLORS)].join("");   // Enduring Vitality: creatures tap for any colour
   return m;
 }
+/* restricted mana: Cavern of Souls' colours only pay for creature spells of its type, Delighted Halfling's only
+   for legendary spells. Tapped by hand it waits in S.rpool and is spent first on a spell that qualifies. */
+function restriction(p) {
+  const id = ident(p);
+  if (id === CAVERN) return { kind: "type", type: p.ctype || "Wizard", label: `${p.ctype || "Wizard"} creature spells` };
+  if (id === "Delighted Halfling") return { kind: "legendary", label: "legendary spells" };
+  return null;
+}
+function restrictedOk(r, ctx) {
+  const k = ctx && C[ctx.name]; if (!k) return false;
+  return r.kind === "type" ? k.k === "creature" && (k.ty || []).includes(r.type) : !!k.leg;
+}
 /* creatures can't use {T} abilities the turn they arrive, unless something gave them haste */
 function sick(p) { return isCreatureP(p) && p.etbTurn === S.turn && p.hasteTurn !== S.turn; }
 function isManaSource(p, ctx) {
@@ -377,8 +389,14 @@ function autoPay(cost, dry, ctx) {
     if (!leg) return false;
     leg.tapped = true; addMana(color === "X" ? "R" : color, 1); tapped.push(`Relic: ${short(ident(leg))}${leg.token ? " token" : ""}`); return true;
   };
+  const rp = S.rpool || [];
+  const takeRestricted = color => {   // restricted mana goes first: it can't pay for anything else
+    const i = rp.findIndex(r => (color === "X" || r.c === color) && restrictedOk(r, ctx)); if (i < 0) return false;
+    tapped.push(`${COLOR_NAME[rp[i].c]} for ${rp[i].label}`); rp.splice(i, 1); return true;
+  };
   const take = color => {
     if (inf[color] || inf.A || inf.T) return true;
+    if (takeRestricted(color)) return true;
     if (S.pool[color] > 0) { S.pool[color]--; return true; }
     if (S.pool.A > 0) { S.pool.A--; return true; }
     const srcs = S.bf.filter(p => isManaSource(p, ctx) && sourceColors(p, ctx).includes(color)).sort((a, b) => srcScore(a, color, ctx) - srcScore(b, color, ctx));
@@ -390,6 +408,7 @@ function autoPay(cost, dry, ctx) {
   };
   const takeAny = () => {
     if (anyInf(inf)) return true;
+    if (takeRestricted("X")) return true;
     for (const k of ["C", "A", ...COLORS]) if (S.pool[k] > 0) { S.pool[k]--; return true; }
     const srcs = S.bf.filter(p => isManaSource(p, ctx)).sort((a, b) => srcScore(a, "X", ctx) - srcScore(b, "X", ctx));
     if (srcs.length) { use(srcs[0], "X"); return takeAny(); }
@@ -484,7 +503,7 @@ function endTurn() {
   const keepRed = onBf(ELECTRO) || onBf(ASHLING);
   S.pool = { ...emptyPool(), R: keepRed ? S.pool.R : 0 };
   if (S.inf) { S.inf = { T: S.inf.T, life: S.inf.life, R: keepRed && S.inf.R }; }   // mana empties, Treasures stay
-  S.loop = null; S.ralPlus = null; S.combat = null;
+  S.loop = null; S.ralPlus = null; S.combat = null; S.rpool = [];
   for (const p of S.bf) if (p.gogoTurn === S.turn) { delete p.copyOf; delete p.copyBack; delete p.gogoTurn; }   // Gogo is Gogo again
   for (const e of S.ex) if (e.play && e.until <= S.turn) e.play = false;
   log("end turn", { stats: { ...S.turnStats } });
@@ -2477,7 +2496,19 @@ async function bfMenu(uid) {
   }
   else if (v === "ral") transformRal(p);
   else if (v === "loy+" || v === "loy-") { p.loyalty = Math.max(0, (p.loyalty || 0) + (v === "loy+" ? 1 : -1)); log("loyalty", { c: "Ral", loyalty: p.loyalty }); }
-  else if (v === "mana") {
+  else if (v === "mana" && restriction(p)) {
+    const r = restriction(p), cols = IDENT || COLORS;
+    pendingArt = ident(p);
+    const col = await openSheet(`${short(p.name)}: colourless, or a colour only for ${r.label}?`, null, [["Colourless", "C", "primary"], ...[...cols].map(x => [`${COLOR_NAME[x]} (only for ${r.label})`, x])]);
+    if (!col) { dropSnapshot(); return; }
+    if (col === "C") { const made = tapFor(p, "C"); log("tap", { c: short(p.name), mana: made.make }); }
+    else {
+      p.tapped = true; S.rpool = [...(S.rpool || []), { c: col, ...r }];
+      if ((C[ident(p)] || {}).k !== "land" && kinnans()) addMana(col, kinnans());   // Kinnan's extra mana isn't restricted
+      log("tap", { c: short(p.name), mana: col, only: r.label });
+      toast(`${COLOR_NAME[col]} mana for ${r.label} only. It pays for the next one you cast.`, "win");
+    }
+  } else if (v === "mana") {
     let cols = sourceColors(p).replace("C", "") || "C";
     if (cols === COLORS && IDENT) cols = IDENT;   // any colour: offer the deck's colours
     const first = cols.includes("R") ? "R" : cols[0];
@@ -2853,6 +2884,9 @@ function render() {
       (many ? `<button class="mini" data-act="addmana" title="Add one mana of a colour" aria-label="Add mana of a colour">+</button>` : "");
   }
   for (const k of pips) $("p" + k).textContent = show(k, S.pool[k]);
+  const rp = S.rpool || [];
+  $("rpool").hidden = !rp.length;
+  $("rpool").textContent = rp.length ? [...new Set(rp.map(r => r.label))].map(l => `${rp.filter(r => r.label === l).map(r => r.c).join("")} for ${l}`).join(", ") : "";
   document.querySelector(".sgrp.krark").hidden = !COMMANDERS.includes(KRARK) && !DECK.cards.includes(KRARK);
   $("treas").textContent = show("T", S.treasures) + (S.tTreasures ? ` +${S.tTreasures}⤵` : ""); $("life").textContent = S.life;
   $("libCount").textContent = S.lib.length;
@@ -3233,7 +3267,7 @@ function runAct(act) {
   }
   if (act === "log") return drawerToggle();
   if (act === "notefocus") { drawerToggle(true); $("note").focus(); return; }
-  if (act === "poolclear") { snapshotUndo(); S.pool = emptyPool(); if (S.inf) for (const k of POOL_KEYS) S.inf[k] = false; log("pool emptied"); render(); return; }
+  if (act === "poolclear") { snapshotUndo(); S.pool = emptyPool(); S.rpool = []; if (S.inf) for (const k of POOL_KEYS) S.inf[k] = false; log("pool emptied"); render(); return; }
   if (act === "handL" || act === "handR") { const h = $("hand"); h.scrollBy({ left: (act === "handL" ? -1 : 1) * h.clientWidth * 0.8 }); return; }
   if (kind === "pool") { snapshotUndo(); const [col, d] = arg.split(","); if (S.inf && S.inf[col] && +d < 0) { S.inf[col] = false; log("infinite " + col + " cleared"); render(); return; } S.pool[col] = Math.max(0, S.pool[col] + +d); if (+d > 0) S.turnStats.manaMade += +d; log("pool " + (+d > 0 ? "+" : "−") + col); render(); return; }
   if (kind === "treas") { snapshotUndo(); if (arg === "-" && S.inf && S.inf.T) { S.inf.T = false; log("infinite Treasures cleared"); render(); return; } if (arg === "+") addTreasure(1); else if (arg === "-") S.treasures = Math.max(0, S.treasures - 1); else if (S.treasures) { S.treasures--; addMana("A", 1); } log("treasure " + arg); render(); return; }
