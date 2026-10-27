@@ -1571,26 +1571,24 @@ function randomOppDiscard() {
 }
 /* Kefka enters or attacks: each player discards a card, then you draw one for each card type among them */
 async function kefkaDiscards(it) {
+  // opponents discard at random (a type rolled from a typical cEDH hand); you choose your own card
+  const alive = aliveOpps();
+  S.kefkaOpp = [];
+  for (const i of alive) S.kefkaOpp[i] = randomOppDiscard();
   const box = document.createElement("div"); box.className = "form";
+  const said = alive.map(i => `Opponent ${i + 1} discards ${S.kefkaOpp[i] ? "a" + (/^[aeiou]/i.test(KIND_WORD[S.kefkaOpp[i]]) ? "n " : " ") + KIND_WORD[S.kefkaOpp[i]].toLowerCase() : "nothing (empty hand)"}.`);
+  box.innerHTML = `<p class="info" style="margin:0">${said.join("<br>")}</p>`;
   let mine = null;
   if (S.hand.length) {
-    const lab = document.createElement("p"); lab.className = "info"; lab.style.margin = "0"; lab.textContent = "You discard:";
+    const lab = document.createElement("p"); lab.className = "info"; lab.style.margin = "8px 0 0"; lab.textContent = "You discard:";
     const pf = pickFrom(S.hand, S.hand[S.hand.length - 1]); box.append(lab, pf.list); mine = pf;
   }
-  const opts = ["", ...Object.keys(KIND_WORD)];
-  const rolled = aliveOpps().map(() => randomOppDiscard());
-  const alive = aliveOpps();
-  const sel = document.createElement("div"); sel.className = "form";
-  sel.innerHTML = `<p class="info" style="margin:0">Opponents' discards are rolled at random from a typical cEDH hand. Change any of them if you know better.</p>` +
-    alive.map((i, j) => `<label for="kd${i}">Opponent ${i + 1} discards a</label><select id="kd${i}">${opts.map(k => `<option value="${k}" ${rolled[j] === k ? "selected" : ""}>${k ? KIND_WORD[k] : "nothing (empty hand)"}</option>`).join("")}</select>`).join("");
-  box.append(sel);
   pendingArt = KEFKA;
   await openSheet(`Kefka ${it.attack ? "attacks" : "enters"}: each player discards a card`, box, [["Discard and draw", "go", "primary"]]);
   const types = new Set();
   const ev = {};
   if (mine) { const n = mine.get(); S.hand.splice(S.hand.indexOf(n), 1); toGy(n); cardTypes(n).forEach(t => types.add(t)); ev.discarded = short(n); }
-  S.kefkaOpp = [];
-  for (const i of alive) { const k = $("kd" + i).value; S.kefkaOpp[i] = k; if (k) { types.add(k); S.oppHand = Math.max(0, S.oppHand - 1); } }
+  for (const i of alive) { const k = S.kefkaOpp[i]; if (k) { types.add(k); S.oppHand = Math.max(0, S.oppHand - 1); } }
   ev.opponents = alive.map(i => S.kefkaOpp[i] || "nothing").join(", ");
   ev.types = types.size;
   log("Kefka", ev);
@@ -1786,15 +1784,23 @@ async function targetFx(name, it) {
 async function inkCopies(it) {
   const ink = S.bf.find(q => q.uid === it.src);
   const mine = S.bf.filter(q => q.uid !== it.src && (C[it.name].tgt === "permanent" ? isCreatureP(q) : isCreatureP(q)));
-  const box = document.createElement("div"); box.className = "form";
-  box.innerHTML = `<p class="info" style="margin:0">${mine.length} cop${mine.length === 1 ? "y" : "ies"} for your other creatures.</p><label for="inkOpp">Creatures your opponents control (each gets a copy too)</label><input id="inkOpp" type="number" min="0" value="${S.oppCreatures || 0}" inputmode="numeric">`;
-  pendingArt = INK;
-  await openSheet(`Ink-Treader Nephilim copies ${short(it.name)}`, box, [["Copy it", "go", "primary"]]);
-  const opp = Math.max(0, Math.floor(+$("inkOpp").value || 0)); S.oppCreatures = opp;
+  const board = oppBoard(), alive = aliveOpps();
+  const opp = alive.reduce((a, i) => a + board.n[i], 0);
   for (const q of mine) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "perm", uid: q.uid, label: short(ident(q)) } });
   for (let i = 0; i < opp; i++) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "other" } });
   S.turnStats.copies += mine.length + opp;
-  log("Ink-Treader Nephilim", { c: short(it.name), copies: mine.length + opp, opponents: opp || undefined, inkGone: ink ? undefined : true });
+  log("Ink-Treader Nephilim", { c: short(it.name), copies: mine.length + opp, yours: mine.length, opponents: alive.map(i => board.n[i]).join("+"), inkGone: ink ? undefined : true });
+  toast(`Ink-Treader: ${mine.length + opp} cop${mine.length + opp === 1 ? "y" : "ies"} of ${short(it.name)}, ${mine.length} for your creatures and ${opp} for opponents' (${alive.map(i => board.n[i]).join(" + ")}).`, "win");
+}
+/* opponents' creatures, which the page doesn't track: rolled once a turn (0 to 4 each, 1.65 on average)
+   so every spell that turn sees the same boards */
+const OPP_CREATURES = [[0, 20], [1, 30], [2, 25], [3, 15], [4, 10]];
+function oppBoard() {
+  if (S.oppBoard && S.oppBoard.turn === S.turn) return S.oppBoard;
+  const roll = () => { let r = rnd() * 100; for (const [k, w] of OPP_CREATURES) { if (r < w) return k; r -= w; } return 0; };
+  S.oppBoard = { turn: S.turn, n: S.opp.map(() => roll()) };
+  log("opponents' creatures", { rolled: S.oppBoard.n.join(", ") });
+  return S.oppBoard;
 }
 /* put a creature from the library onto the battlefield (Chord, Green Sun's Zenith, Nature's Rhythm, Eldritch Evolution) */
 async function creatureToBf(source, maxMv, ok = () => true) {

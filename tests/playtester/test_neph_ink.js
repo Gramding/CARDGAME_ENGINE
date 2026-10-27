@@ -18,37 +18,42 @@ const { table, check } = require('./lib');
 
   // Cerulean Wisps on Ink-Treader: a copy for each other creature, each untapping it and drawing
   await setup(['Cerulean Wisps'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Birds of Paradise', 'Noble Hierarch', 'Tropical Island']);
-  await ev(() => { S.bf.slice(0, 4).forEach(p => { p.tapped = true; }); });
+  await ev(() => { S.bf.slice(0, 4).forEach(p => { p.tapped = true; }); S.oppBoard = { turn: S.turn, n: [0, 0, 0] }; });
   const hand0 = await state(() => S.hand.length);
   await go(() => cast('Cerulean Wisps', 'hand'));
   check('Ink-Treader is the preselected target', (await T.title()).includes('target which creature') && await state(() => document.querySelector('#sheetBody .pick.sel').textContent.startsWith('Ink-Treader')));
   await press('Target it');
   check("Ink-Treader's trigger is on the stack above the spell", await state(() => S.stack[S.stack.length - 1].eff === 'ink'));
   await resolve();
-  check('Ink asks about opponents\' creatures', (await T.title()).startsWith('Ink-Treader Nephilim copies'));
-  await press('Copy it');
-  check('Three copies, one per other creature', await state(() => S.stack.filter(x => x.kind === 'copy' && x.name === 'Cerulean Wisps').length === 3));
+  check('Three copies, one per other creature (opponents have none this time)', await state(() => S.stack.filter(x => x.kind === 'copy' && x.name === 'Cerulean Wisps').length === 3));
   await runStack();
   check('Every creature untapped and four cards drawn', await state(h => S.bf.filter(p => isCreatureP(p)).every(p => !p.tapped) && S.hand.length === h - 1 + 4, hand0), await state(() => S.hand.length));
 
-  // copies for opponents' creatures draw too
-  await setup(['Leap'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Tropical Island']);
+  // opponents' creatures are rolled once a turn, and their copies draw too
+  await setup(['Leap', 'Shadow Rift'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Tropical Island', 'Tundra']);
   const h1 = await state(() => S.hand.length);
   await go(() => cast('Leap', 'hand')); await press('Target it'); await resolve();
-  await ev(() => { document.getElementById('inkOpp').value = 2; }); await press('Copy it');
+  const board = await state(() => S.oppBoard && S.oppBoard.turn === S.turn && S.oppBoard.n.reduce((a, b) => a + b, 0));
+  check('Opponents\' creatures were rolled without asking', board !== false && !(await T.sheet()).open, String(board));
   await runStack();
-  check('Leap with two opposing creatures: 1 + 1 + 2 = 4 draws', await state(h => S.hand.length === h - 1 + 4, h1));
+  check(`Leap: 1 + 1 + ${board} opposing = ${2 + board} draws`, await state(([h, b]) => S.hand.length === h - 1 + 2 + b, [h1, board]));
+  await go(() => cast('Shadow Rift', 'hand')); await press('Target it'); await resolve();
+  check('The same boards for a second spell that turn', await state(b => S.stack.filter(x => x.kind === 'copy' && x.target.kind === 'other').length === b, board));
+  await runStack();
+  const avg = await state(() => { let t = 0; for (let i = 0; i < 400; i++) { S.oppBoard = null; S.turn = 100 + i; t += oppBoard().n.reduce((a, b) => a + b, 0); } return t / 400; });
+  check('Three opponents average about five creatures', avg > 4.3 && avg < 5.6, avg.toFixed(2));
 
   // Treasure makers
   await setup(['Sudden Breakthrough'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Birds of Paradise', 'Taiga']);
-  await ev(() => { S.oppCreatures = 0; });
+  await ev(() => { S.oppBoard = { turn: S.turn, n: [0, 0, 0] }; });
   await go(() => cast('Sudden Breakthrough', 'hand')); await press('Target it'); await runStack();
   check('Sudden Breakthrough through Ink: three Treasures, Elves +2/+0', await state(() => S.treasures === 3 && power(S.bf.find(p => p.name === 'Llanowar Elves')) === 3));
 
   // a copy whose creature left does nothing
   await setup(['Charge Through'], ['Ink-Treader Nephilim', 'Llanowar Elves', 'Taiga']);
   const h2 = await state(() => S.hand.length);
-  await go(() => cast('Charge Through', 'hand')); await press('Target it'); await resolve(); await press('Copy it');
+  await ev(() => { S.oppBoard = { turn: S.turn, n: [0, 0, 0] }; });
+  await go(() => cast('Charge Through', 'hand')); await press('Target it'); await resolve();
   await ev(() => { S.bf = S.bf.filter(p => p.name !== 'Llanowar Elves'); });
   await runStack();
   check('The copy aimed at the departed Elves fizzled: one draw', await state(h => S.hand.length === h - 1 + 1 && S.turnLog.some(e => e.a === 'fizzle'), h2));

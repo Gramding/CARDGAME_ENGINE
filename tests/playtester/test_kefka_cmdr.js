@@ -5,9 +5,8 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
 (async () => {
   const T = await table();
   const { ev, go, press, pick, setup, state } = T;
-  const discards = async (opp) => {   // answer Kefka's sheet: opponents' discards by type
-    await T.p.waitForFunction(() => document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
-    await ev(o => { o.forEach((k, i) => { const s = document.getElementById('kd' + i); if (s) s.value = k; }); }, opp);
+  const discards = async () => {   // answer Kefka's sheet; the opponents' discards are already rolled
+    await T.p.waitForFunction(() => !document.getElementById('sheet').hidden && document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
     await press('Discard and draw');
   };
 
@@ -19,9 +18,10 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   check('Kefka resolved and all four sources paid', await state(() => S.bf.some(p => p.name === 'Kefka, Court Mage // Kefka, Ruler of Ruin') && S.bf.filter(p => p.tapped).length === 4));
   const hand0 = await state(() => S.hand.length);
   await ev(() => { const l = document.querySelectorAll('#sheetBody .pick'); [...l].find(b => b.textContent.includes('Island')).click(); });
-  await discards(['instant', 'creature', '']);
-  check('Kefka ETB: discarded a land; land, instant and creature = 3 draws', await state(h => S.hand.length === h - 1 + 3 && S.gy.includes('Island'), hand0), await state(() => JSON.stringify(S.turnLog.filter(e => e.a === 'Kefka'))));
-  check('Opponents discarding shrink the tracked hand size', await state(() => S.oppHand === 4));
+  check('The sheet shows the opponents\' rolled discards, with no dropdowns', await state(() => /Opponent 1 discards/.test(document.getElementById('sheetBody').textContent) && !document.querySelector('#sheetBody select')));
+  await discards();
+  check('Kefka ETB: one draw per card type among your land and the rolled discards', await state(h => { const types = new Set(['land', ...S.kefkaOpp.filter(Boolean)]); return S.hand.length === h - 1 + types.size && S.gy.includes('Island'); }, hand0), await state(() => JSON.stringify(S.turnLog.filter(e => e.a === 'Kefka'))));
+  check('Opponents discarding shrink the tracked hand size', await state(() => S.oppHand === 6 - S.kefkaOpp.filter(Boolean).length));
 
   // opponents' discards are rolled at random, and an empty tracked hand discards nothing
   const rolls = new Set();
@@ -29,7 +29,7 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
     await setup(['Island'], []);
     await go(() => enterBf('Kefka, Court Mage // Kefka, Ruler of Ruin')); await go(() => { resolveTop(); });
     await T.p.waitForFunction(() => !document.getElementById('sheet').hidden && document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
-    const vals = await ev(() => [0, 1, 2].map(i => document.getElementById('kd' + i).value));
+    const vals = await ev(() => [0, 1, 2].map(i => S.kefkaOpp[i]));
     vals.forEach(v => rolls.add(v));
     await press('Discard and draw');
   }
@@ -38,7 +38,7 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   await ev(() => { S.oppHand = 0; });
   await go(() => enterBf('Kefka, Court Mage // Kefka, Ruler of Ruin')); await go(() => { resolveTop(); });
   await T.p.waitForFunction(() => !document.getElementById('sheet').hidden && document.getElementById('sheetTitle').textContent.startsWith('Kefka'), null, { timeout: 4000 });
-  check('An empty opponent hand discards nothing', await ev(() => [0, 1, 2].every(i => document.getElementById('kd' + i).value === '')));
+  check('An empty opponent hand discards nothing', await ev(() => [0, 1, 2].every(i => S.kefkaOpp[i] === '') && /discards nothing/.test(document.getElementById('sheetBody').textContent)));
   await press('Discard and draw');
 
   // Harmonic Prodigy doubles Kefka's trigger (he's a Wizard)
@@ -78,7 +78,7 @@ const KEFKA = 'Kefka, Court Mage // Kefka, Ruler of Ruin';
   check('Gogo is a copy of Kefka, both 6 power', await state(() => { const g = S.bf.find(p => p.name === 'Gogo, Mysterious Mime'), k = S.bf.find(p => p.name !== g.name); return ident(g).startsWith('Kefka') && power(g) === 6 && power(k) === 6; }));
   await go(() => combat()); await press('Attack');
   check('Both attacked and each has Kefka\'s attack trigger', await state(() => S.bf.every(p => p.tapped) && S.stack.filter(x => x.eff === 'kefka' && x.attack).length === 2));
-  for (let i = 0; i < 2; i++) { await go(() => { resolveTop(); }); await discards(['', '', '']); }
+  for (let i = 0; i < 2; i++) { await go(() => { resolveTop(); }); await discards(); }
   await go(() => combat());
   check('Combat damage: 12 to opponent 1', await state(() => S.opp[0].life === 28), await state(() => S.opp.map(o => o.life).join(',')));
   await ev(() => { nextTurn(); }); await T.p.waitForTimeout(150);
