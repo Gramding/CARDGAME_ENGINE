@@ -1,4 +1,12 @@
 {
+ "Abrade": {
+  "a": "Bartek Fedyczak",
+  "f": "https://cards.scryfall.io/normal/front/8/4/847b4081-25c9-4a9a-a2f3-d5fdadbfe81b.jpg?1793111894"
+ },
+ "Aetherflux Reservoir": {
+  "a": "Cliff Childs",
+  "f": "https://cards.scryfall.io/normal/front/9/6/96b6b2e1-c3e6-464c-8a13-b15deb34e862.jpg?1783937164"
+ },
  "Amphibian Downpour": {
   "a": "Omar Rayyan",
   "f": "https://cards.scryfall.io/normal/front/2/d/2d8aeca5-622a-45be-8168-07e7c00e3092.jpg?1783911294"
@@ -43,6 +51,10 @@
   "a": "Daarken",
   "f": "https://cards.scryfall.io/normal/front/7/3/73403d04-fe97-4830-8b80-16dd1a1a6cc1.jpg?1783939227"
  },
+ "Basalt Monolith": {
+  "a": "Yeong-Hao Han",
+  "f": "https://cards.scryfall.io/normal/front/f/7/f79de5e7-1545-420c-bfe1-ee2444fca85b.jpg?1783930120"
+ },
  "Bayou": {
   "a": "Karl Kopinski",
   "f": "https://cards.scryfall.io/normal/front/b/d/bd7567df-b4d8-41a8-8eac-c05afa784bfe.jpg?1783939226"
@@ -50,6 +62,10 @@
  "Beseech the Mirror": {
   "a": "Cynthia Sheppard",
   "f": "https://cards.scryfall.io/normal/front/1/8/18c59776-e1f1-4197-a128-db1d603f56b7.jpg?1783915111"
+ },
+ "Big Score": {
+  "a": "Jurijus Chitrovas",
+  "f": "https://cards.scryfall.io/normal/front/3/3/3383a939-4ab3-4546-9995-6c65cd3f4441.jpg?1783903010"
  },
  "Birds of Paradise": {
   "a": "Kevin Sidharta",
@@ -63,6 +79,10 @@
  "Blood Crypt": {
   "a": "Jonas De Ro",
   "f": "https://cards.scryfall.io/normal/front/1/b/1b7eb998-3ec0-4cbc-a416-5a1e3e5a7316.jpg?1784036817"
+ },
+ "Blood Moon": {
+  "a": "Franz Vohwinkel",
+  "f": "https://cards.scryfall.io/normal/front/d/0/d072e9ca-aae7-45dc-8025-3ce590bae63f.jpg?1783930171"
  },
  "Bloodstained Mire": {
   "a": "Bruce Brenneise",
@@ -100,6 +120,10 @@
   "a": "Svetlin Velinov",
   "f": "https://cards.scryfall.io/normal/front/3/8/38f741bf-13ee-4384-98ab-27833ebb9f6d.jpg?1783937074"
  },
+ "Chaos Warp": {
+  "a": "Trevor Claxton",
+  "f": "https://cards.scryfall.io/normal/front/f/b/fb8d8106-b9bd-405c-886e-72fc301c65e1.jpg?1787743253"
+ },
  "Charge Through": {
   "a": "Craig J Spearing",
   "f": "https://cards.scryfall.io/normal/front/e/d/ed16926f-feb0-481a-8c5e-88ea119752cd.jpg?1783927346"
@@ -107,6 +131,14 @@
  "Chord of Calling": {
   "a": "Heather Hudson",
   "f": "https://cards.scryfall.io/normal/front/b/1/b18fe7e0-8344-40cc-b242-83f01c6be7a6.jpg?1783913306"
+ },
+ "Chromatic Sphere": {
+  "a": "Brian Snõddy",
+  "f": "https://cards.scryfall.io/normal/front/e/d/edabc8b2-4413-48e4-8d6f-521b19d839a6.jpg?1783930341"
+ },
+ "Chromatic Star": {
+  "a": "Daniel Ljunggren",
+  "f": "https://cards.scryfall.io/normal/front/c/2/c2e8d492-2c67-410b-b556-c157a14c4cec.jpg?1783927757"
  },
  "Chrome Mox": {
   "a": "Volkan Baǵa",
@@ -119,6 +151,10 @@
  "City of Traitors": {
   "a": "Kev Walker",
   "f": "https://cards.scryfall.io/normal/front/7/1/71624139-a255-48be-93ca-594a4beba487.jpg?1783938443"
+ },
+ "Cloud Key": {
+  "a": "Matt Stewart",
+  "f": "https://cards.scryfall.io/normal/front/b/8/b851ab76-e40e-4232-b120-0bc1905ef0b4.jpg?1783906051"
  },
  "Command Tower": {
   "a": "Josu Solano",
@@ -147,6 +183,10 @@
  "Deathrite Shaman": {
   "a": "Steve Argyle",
   "f": "https://cards.scryfall.io/normal/front/c/f/cfdb1c47-14be-491f-88b3-bed03489dbc5.jpg?1783913292"
+ },
+ "Defense Grid": {
+  "a": "Mark Tedin",
+  "f": "https://cards.scryfall.io/normal/front/f/9/f939dac5-ad71-4163-adde-4f435412477c.jpg?1783943901"
  },
  "Defiant Strike": {
   "a": "Gabor Szikszai",
@@ -212,6 +252,10 @@
   "a": "Jonas De Ro",
   "f": "https://cards.scryfall.io/normal/front/a/b/ab95f6e7-b806-47fe-a071-6c38b3176d94.jpg?1783933367"
  },
+ "Empty the Warrens": {
+  "a": "Johan Grenier",
+  "f": "https://cards.scryfall.io/normal/front/e/9/e9116aa0-1993-4f4a-9a1d-0561d0fbcba9.jpg?1787679719"
+ },
  "Enduring Vitality": {
   "a": "Valera Lutfullina",
   "f": "https://cards.scryfall.io/normal/front/9/d/9d76a30c-0431-4334-892a-9822dda9671a.jpg?1783909457"
@@ -232,9 +276,18 @@
   "a": "Kieran Yanner",
   "f": "https://cards.scryfall.io/normal/front/b/8/b86c0628-0b61-44f2-91cc-1c3c309631ce.jpg?1783928712"
  },
+ "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki": {
+  "a": "Joseph Meehan",
+  "f": "https://cards.scryfall.io/normal/front/2/4/24c0d87b-0049-4beb-b9cb-6f813b7aa7dc.jpg?1783923875",
+  "b": "https://cards.scryfall.io/normal/back/2/4/24c0d87b-0049-4beb-b9cb-6f813b7aa7dc.jpg?1783923875"
+ },
  "Faeburrow Elder": {
   "a": "Mark Zug",
   "f": "https://cards.scryfall.io/normal/front/1/4/145dcac4-2c53-4ae9-9ede-24dc07474b01.jpg?1783911522"
+ },
+ "Faithless Looting": {
+  "a": "Gabor Szikszai",
+  "f": "https://cards.scryfall.io/normal/front/f/c/fc019ffa-4461-4f3d-ab8d-e4d20e77ca0c.jpg?1783903774"
  },
  "Fellwar Stone": {
   "a": "John Avon",
@@ -255,6 +308,14 @@
  "Fire Covenant": {
   "a": "Jeff Miracola",
   "f": "https://cards.scryfall.io/normal/front/1/a/1a13437b-e0c7-4ca9-a0e2-b8cb1b5813ec.jpg?1783911521"
+ },
+ "Fireblast": {
+  "a": "Mike Bierek",
+  "f": "https://cards.scryfall.io/normal/front/a/0/a0ab67cc-b553-4451-9cda-0e5fe3303940.jpg?1783918463"
+ },
+ "Flare of Duplication": {
+  "a": "Olivier Bernard",
+  "f": "https://cards.scryfall.io/normal/front/4/9/497a10c6-131b-464e-95e4-e47708a24d48.jpg?1783911272"
  },
  "Flash Photography": {
   "a": "Winona Nelson",
@@ -288,6 +349,10 @@
   "a": "Alejandro Pacheco",
   "f": "https://cards.scryfall.io/normal/front/d/8/d8c5e52d-57ae-464b-8860-7dd39ebfef64.jpg?1783904806"
  },
+ "Fury": {
+  "a": "Victor Adame Minguez",
+  "f": "https://cards.scryfall.io/normal/front/9/3/932d0fb9-382d-464a-9427-b91fa2398cdb.jpg?1783911524"
+ },
  "Fyndhorn Elves": {
   "a": "Igor Kieryluk",
   "f": "https://cards.scryfall.io/normal/front/4/5/450744cf-7eba-491b-97b0-ca80c6368bbb.jpg?1783928794"
@@ -319,6 +384,14 @@
  "Gogo, Mysterious Mime": {
   "a": "Lee Woo-chul",
   "f": "https://cards.scryfall.io/normal/front/0/d/0db05dc8-03f8-4ab4-9ca3-2aaaa0099eb4.jpg?1783906356"
+ },
+ "Grapeshot": {
+  "a": "Irvin Rodriguez",
+  "f": "https://cards.scryfall.io/normal/front/e/3/e3e2d90a-3557-49d5-9986-cb50fd31f396.jpg?1783903011"
+ },
+ "Great Furnace": {
+  "a": "Rob Alexander",
+  "f": "https://cards.scryfall.io/normal/front/7/4/74c5bb44-d72c-4c1a-a38f-86b4a8f49ae1.jpg?1783906013"
  },
  "Green Sun's Zenith": {
   "a": "David Rapoza",
@@ -364,6 +437,10 @@
   "a": "Christopher Moeller",
   "f": "https://cards.scryfall.io/normal/front/d/2/d29bb432-1ca6-4305-b6d3-d7afe06c6c69.jpg?1783943479"
  },
+ "Inner Fire": {
+  "a": "Christopher Moeller",
+  "f": "https://cards.scryfall.io/normal/front/b/1/b1d886a2-ae83-4d95-9ec0-582c563181e6.jpg?1783944146"
+ },
  "Into the Flood Maw": {
   "a": "Danny Schwartz",
   "f": "https://cards.scryfall.io/normal/front/5/0/50b9575a-53d9-4df7-b86c-cda021107d3f.jpg?1783910850"
@@ -388,6 +465,10 @@
   "a": "Xui Ton",
   "f": "https://cards.scryfall.io/normal/front/8/f/8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8.jpg?1783906572",
   "b": "https://cards.scryfall.io/normal/back/8/f/8fcf3fbb-1ddd-437e-81c1-f5a3133f5ee8.jpg?1783906572"
+ },
+ "Kiki-Jiki, Mirror Breaker": {
+  "a": "Steven Belledin",
+  "f": "https://cards.scryfall.io/normal/front/a/2/a2ff0ee3-9600-4c7d-acec-6ec90595384e.jpg?1783935527"
  },
  "Kinnan, Bonder Prodigy": {
   "a": "Jason Rainville",
@@ -425,9 +506,21 @@
   "a": "April Lee",
   "f": "https://cards.scryfall.io/normal/front/f/8/f85ab5f9-508e-45de-8fa1-ce1f16552ffc.jpg?1783938446"
  },
+ "Magus of the Moon": {
+  "a": "Milivoj Ćeran",
+  "f": "https://cards.scryfall.io/normal/front/7/c/7c9bd75c-9606-4607-bfa6-d6acdee12820.jpg?1783927794"
+ },
+ "Magus of the Wheel": {
+  "a": "Carl Frank",
+  "f": "https://cards.scryfall.io/normal/front/0/e/0e952dd9-ef09-40f0-993f-eb3a1516616a.jpg?1783915649"
+ },
  "Mana Confluence": {
   "a": "Richard Wright",
   "f": "https://cards.scryfall.io/normal/front/5/0/504a69eb-3c2d-4bb1-b117-252b15acf0c2.jpg?1783939402"
+ },
+ "Mana Geyser": {
+  "a": "Martina Pilcerova",
+  "f": "https://cards.scryfall.io/normal/front/d/f/dfbda387-3c7d-4c80-97c3-60c9d4757244.jpg?1783903773"
  },
  "Mana Vault": {
   "a": "Christine Choi",
@@ -449,9 +542,17 @@
   "a": "Jeremy Jarvis",
   "f": "https://cards.scryfall.io/normal/front/7/5/7536292c-da25-41c8-ba28-1e35758a7f3d.jpg?1783944273"
  },
+ "Mind Stone": {
+  "a": "Racrufi",
+  "f": "https://cards.scryfall.io/normal/front/0/9/091600ae-6578-4353-8e0f-d170f555bcd0.jpg?1793111949"
+ },
  "Mindbreak Trap": {
   "a": "Christopher Moeller",
   "f": "https://cards.scryfall.io/normal/front/4/f/4f51140b-6254-431a-8810-94307bfdfbbe.jpg?1783942162"
+ },
+ "Mishra's Bauble": {
+  "a": "Chippy",
+  "f": "https://cards.scryfall.io/normal/front/4/5/45bbbf9b-8fee-4c32-a513-02dac6ac8a39.jpg?1783930102"
  },
  "Misty Rainforest": {
   "a": "Shelly Wan",
@@ -529,6 +630,10 @@
   "a": "Jason Chan",
   "f": "https://cards.scryfall.io/normal/front/1/e/1ed4c0bb-b710-44a1-b8bc-6bd11c27b8b8.jpg?1783927843"
  },
+ "Past in Flames": {
+  "a": "Anna Steinbauer",
+  "f": "https://cards.scryfall.io/normal/front/2/b/2b7472f4-37b0-439f-b4ac-80706d40d191.jpg?1783936642"
+ },
  "Phyrexian Metamorph": {
   "a": "Jana Schirmer & Johannes Voss",
   "f": "https://cards.scryfall.io/normal/front/a/5/a564c2e8-f49f-4ed7-850f-7c8bc92e4926.jpg?1783906041"
@@ -537,6 +642,10 @@
   "a": "Jason A. Engle",
   "b": "https://cards.scryfall.io/normal/back/2/4/24d4f26e-7f96-4b38-867e-4fac819b2679.jpg?1783911228",
   "f": "https://cards.scryfall.io/normal/front/2/4/24d4f26e-7f96-4b38-867e-4fac819b2679.jpg?1783911228"
+ },
+ "Pithing Needle": {
+  "a": "Anthony Palumbo",
+  "f": "https://cards.scryfall.io/normal/front/7/7/776899f8-e977-42b7-8b54-6f726a349e3c.jpg?1783921789"
  },
  "Polluted Delta": {
   "a": "Chris Ostrowski",
@@ -554,6 +663,14 @@
   "a": "Lake Hurwitz",
   "f": "https://cards.scryfall.io/normal/front/b/0/b029eb9a-dd7a-40c2-96c4-0063d9cc002c.jpg?1783937576"
  },
+ "Q, Stacking the Deck": {
+  "a": "Ryan Valle",
+  "f": "https://cards.scryfall.io/normal/front/d/c/dcbe34db-0065-4960-92b8-3ea1d336e803.jpg?1792508237"
+ },
+ "Ragavan, Nimble Pilferer": {
+  "a": "Simon Dominic",
+  "f": "https://cards.scryfall.io/normal/front/a/9/a9738cda-adb1-47fb-9f4c-ecd930228c4d.jpg?1791803835"
+ },
  "Ral, Monsoon Mage // Ral, Leyline Prodigy": {
   "a": "Dmitry Burmak",
   "b": "https://cards.scryfall.io/normal/back/4/3/438d8a26-ddc9-4829-8aff-22d6af6575cf.jpg?1783911228",
@@ -562,6 +679,10 @@
  "Reanimate": {
   "a": "Johann Bodin",
   "f": "https://cards.scryfall.io/normal/front/3/6/368b6903-5fc4-43e7-bd44-46b8107c8bb4.jpg?1783909614"
+ },
+ "Reckless Impulse": {
+  "a": "Simon Dominic",
+  "f": "https://cards.scryfall.io/normal/front/5/b/5bca43d8-7c69-47f4-8f82-48dd2b6a7cba.jpg?1785981560"
  },
  "Reckless Ransacking": {
   "a": "Daren Bader",
@@ -574,6 +695,10 @@
  "Redirect Lightning": {
   "a": "Toni Infante",
   "f": "https://cards.scryfall.io/normal/front/2/b/2b5b14a7-1fdd-4efc-b197-cadfa7f7c860.jpg?1783904953"
+ },
+ "Reforge the Soul": {
+  "a": "Jaime Jones",
+  "f": "https://cards.scryfall.io/normal/front/1/c/1c3509c6-2ae7-45be-8ac9-4d14d69db32f.jpg?1783908117"
  },
  "Relic of Legends": {
   "a": "Milivoj Ćeran",
@@ -600,6 +725,14 @@
   "b": "https://cards.scryfall.io/normal/back/2/6/2668ac91-6cda-4f81-a08d-4fc5f9cb35b2.jpg?1783929311",
   "f": "https://cards.scryfall.io/normal/front/2/6/2668ac91-6cda-4f81-a08d-4fc5f9cb35b2.jpg?1783929311"
  },
+ "Ruby Medallion": {
+  "a": "Daniel Ljunggren",
+  "f": "https://cards.scryfall.io/normal/front/6/3/630febf5-58ff-4dab-a5a8-575ebc5435a6.jpg?1783911209"
+ },
+ "Runaway Steam-Kin": {
+  "a": "Jason Felix",
+  "f": "https://cards.scryfall.io/normal/front/d/8/d8c9c111-fbc7-44e1-94bd-1ca164370623.jpg?1783934158"
+ },
  "Sakashima of a Thousand Faces": {
   "a": "Jason A. Engle",
   "f": "https://cards.scryfall.io/normal/front/7/1/714c3a1f-7b30-4ed8-8f38-6176758741fb.jpg?1783928853"
@@ -624,9 +757,22 @@
   "a": "Eytan Zana",
   "f": "https://cards.scryfall.io/normal/front/9/d/9d471e36-a3ab-4a96-ba4b-8eca921ea37a.jpg?1783939218"
  },
+ "Seething Song": {
+  "a": "Martina Pilcerova",
+  "f": "https://cards.scryfall.io/normal/front/f/4/f493ce26-005c-4ddc-80f0-47bea4fd013a.jpg?1783927539"
+ },
+ "Sensei's Divining Top": {
+  "a": "Michael Sutfin",
+  "f": "https://cards.scryfall.io/normal/front/e/5/e5142b7a-e580-4737-a4aa-2590f6610ceb.jpg?1783921788"
+ },
  "Shadow Rift": {
   "a": "Adam Rex",
   "f": "https://cards.scryfall.io/normal/front/0/6/06f6d0bd-19b9-45d0-8768-691a6a593d81.jpg?1783938492"
+ },
+ "Shatterskull Smashing // Shatterskull, the Hammer Pass": {
+  "a": "Adam Paquette",
+  "f": "https://cards.scryfall.io/normal/front/b/c/bc7239ea-f8aa-4a6f-87bd-c35359635673.jpg?1783929355",
+  "b": "https://cards.scryfall.io/normal/back/b/c/bc7239ea-f8aa-4a6f-87bd-c35359635673.jpg?1783929355"
  },
  "Shivan Reef": {
   "a": "Andrew Mar",
@@ -725,6 +871,11 @@
   "a": "Vance Kovacs",
   "f": "https://cards.scryfall.io/normal/front/5/b/5b659a3b-0f66-40f2-8e2e-f13b694e270e.jpg?1783927786"
  },
+ "Sundering Eruption // Volcanic Fissure": {
+  "a": "Yohann Schepacz",
+  "f": "https://cards.scryfall.io/normal/front/5/0/50686ac7-346c-43d1-bdaa-28d46a12ad93.jpg?1783911228",
+  "b": "https://cards.scryfall.io/normal/back/5/0/50686ac7-346c-43d1-bdaa-28d46a12ad93.jpg?1783911228"
+ },
  "Swan Song": {
   "a": "Lorenzo Mastroianni",
   "f": "https://cards.scryfall.io/normal/front/8/3/83d0b761-d694-4232-9f40-5bd8c82a05f1.jpg?1783906053"
@@ -773,9 +924,21 @@
   "a": "Magali Villeneuve",
   "f": "https://cards.scryfall.io/normal/front/c/9/c977fb5f-4436-41d0-af68-93b6d05897e5.jpg?1784376948"
  },
+ "Thrill of Possibility": {
+  "a": "Julie Dillon",
+  "f": "https://cards.scryfall.io/normal/front/d/d/ddb01913-ad41-4a20-bef0-cf8412cce39c.jpg?1793111905"
+ },
  "Thundering Falls": {
   "a": "Grady Frederick",
   "f": "https://cards.scryfall.io/normal/front/1/7/17260fff-b239-4af4-9306-3236ae3fa5a5.jpg?1783912822"
+ },
+ "Tibalt's Trickery": {
+  "a": "Anna Podedworna",
+  "f": "https://cards.scryfall.io/normal/front/d/d/dd921e27-3e08-438c-bec2-723226d35175.jpg?1783928223"
+ },
+ "Tormod's Crypt": {
+  "a": "Lars Grant-West",
+  "f": "https://cards.scryfall.io/normal/front/7/5/752bf493-5839-47e8-95f2-6d8201907428.jpg?1783918410"
  },
  "Toxic Deluge": {
   "a": "Brian Valenzuela",
@@ -813,13 +976,30 @@
   "a": "Lie Setiawan",
   "f": "https://cards.scryfall.io/normal/front/0/e/0e51d796-7279-4c06-87f0-37adbdaa41df.jpg?1783931543"
  },
+ "Unexpected Windfall": {
+  "a": "Alayna Danner",
+  "f": "https://cards.scryfall.io/normal/front/b/a/bae6a5fb-39f5-4cf8-85f7-661cb4570507.jpg?1783926470"
+ },
  "Unsubstantiate": {
   "a": "Victor Adame Minguez",
   "f": "https://cards.scryfall.io/normal/front/2/d/2dc0bafd-debc-4b62-9fe0-56b4aad02484.jpg?1783930714"
  },
+ "Urza's Bauble": {
+  "a": "Christopher Rush",
+  "f": "https://cards.scryfall.io/normal/front/2/9/29175e6b-a2ab-4373-8093-cb372aa8c7d0.jpg?1789040656"
+ },
+ "Urza's Saga": {
+  "a": "Titus Lunter",
+  "f": "https://cards.scryfall.io/normal/front/c/1/c1e0f201-42cb-46a1-901a-65bb4fc18f6c.jpg?1783926791"
+ },
  "Utopia Sprawl": {
   "a": "Ron Spears",
   "f": "https://cards.scryfall.io/normal/front/5/e/5ea568df-04a1-4012-98ec-ba75e189e0ca.jpg?1783913297"
+ },
+ "Valakut Awakening // Valakut Stoneforge": {
+  "a": "Campbell White",
+  "f": "https://cards.scryfall.io/normal/front/2/2/228e551e-023a-4c9a-8f32-58dae6ffdf7f.jpg?1783929350",
+  "b": "https://cards.scryfall.io/normal/back/2/2/228e551e-023a-4c9a-8f32-58dae6ffdf7f.jpg?1783929350"
  },
  "Vampiric Tutor": {
   "a": "Raymond Swanland",
@@ -845,9 +1025,25 @@
   "a": "Noah Bradley",
   "f": "https://cards.scryfall.io/normal/front/2/f/2f607e7e-30c0-45e9-8f61-bf6e9fe63f2b.jpg?1783939216"
  },
+ "Walking Ballista": {
+  "a": "Daniel Ljunggren",
+  "f": "https://cards.scryfall.io/normal/front/5/2/5272436e-74f0-44c4-a291-ea8ebc3f1525.jpg?1783930088"
+ },
+ "War Room": {
+  "a": "Milivoj Ćeran",
+  "f": "https://cards.scryfall.io/normal/front/0/7/0775b4be-881c-4832-8954-d961064315b6.jpg?1783903712"
+ },
  "Watery Grave": {
   "a": "Raymond Bonilla",
   "f": "https://cards.scryfall.io/normal/front/5/5/5525d6a6-e532-4047-9da4-bfae7927fecc.jpg?1784036860"
+ },
+ "Wheel of Fortune": {
+  "a": "John Matson",
+  "f": "https://cards.scryfall.io/normal/front/2/5/2597050f-6b1b-474e-aa16-33fd154628ca.jpg?1783939263"
+ },
+ "Wheel of Misfortune": {
+  "a": "J.P. Targete",
+  "f": "https://cards.scryfall.io/normal/front/7/4/74177b51-a300-49d9-8ea7-557b19cf80c7.jpg?1783928800"
  },
  "Windswept Heath": {
   "a": "Alexander Forssberg",
@@ -868,5 +1064,9 @@
  "Yawgmoth's Will": {
   "a": "Ron Spencer",
   "f": "https://cards.scryfall.io/normal/front/3/3/337239c7-73c4-4e2d-9160-ed26927dea1d.jpg?1783939278"
+ },
+ "Zealous Conscripts": {
+  "a": "Steve Prescott",
+  "f": "https://cards.scryfall.io/normal/front/b/5/b5ca6c08-bfe0-4021-b6ad-e235c8905661.jpg?1783908106"
  }
 }
