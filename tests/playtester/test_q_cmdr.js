@@ -5,7 +5,8 @@ const Q = 'Q, Stacking the Deck';
 (async () => {
   const T = await table();
   const { ev, go, press, pick, state } = T;
-  const setup = (h, b) => T.setup(h, b, 'q');
+  // Reforge the Soul drawn in a turn pass would stop for its miracle; the wheels test puts it on top itself
+  const setup = async (h, b) => { await T.setup(h, b, 'q'); await ev(() => { S.lib = S.lib.filter(n => n !== 'Reforge the Soul'); }); };
   const resolve = async () => { await go(() => { resolveTop(); }); };
   // the library order Q sees: shuffles keep it when Math.random sits at the top of its range
   const stackLib = top => ev(top => { window.__mr = window.__mr || Math.random; S.rng = null; Math.random = () => 0.9999; S.lib = [...top, ...S.lib.filter(n => !top.includes(n))]; }, top);
@@ -47,7 +48,7 @@ const Q = 'Q, Stacking the Deck';
   // a copy of a permanent card becomes a token
   await setup(['Mountain'], ['Mountain', 'Mountain']);
   await ev(() => { S.ex.push({ n: 'Ragavan, Nimble Pilferer', q: true }); });
-  await go(() => zoneAct('ex', 'Ragavan, Nimble Pilferer', 'qcopy')); await press('Exile it');
+  await go(() => zoneAct('ex', 'Ragavan, Nimble Pilferer', 'qcopy'));   // the only card in hand is exiled without asking
   check('Ragavan\'s copy can be dashed too', await state(() => [...document.querySelectorAll('#sheetButtons button')].some(b => b.textContent.startsWith('Dash {1R}'))));
   await press('Cast the copy'); await T.p.waitForTimeout(200);
   check('The copy of Ragavan entered as a token', await state(() => S.bf.some(p => p.name === 'Ragavan, Nimble Pilferer' && p.token) && S.ex.some(e => e.q)));

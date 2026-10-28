@@ -786,8 +786,19 @@ const ETB_TRIG = { [MONK]: "monk", [DUAL]: "dualcaster", [RECRUITER]: "recruiter
   "Spellseeker": "seeker", "Nephilim Epochal": "epochal", "Tataru Taru": "tataru", [QSTACK]: "q", "Fury": "fury", [CONSCRIPTS]: "conscripts" };
 /* the ETB trigger a permanent has: Kefka's back face has none, and a Frog from Amphibian Downpour has no abilities */
 function etbEff(p) { if (p.frog || (ident(p) === KEFKA && backUp(p))) return null; return ETB_TRIG[ident(p)] || null; }
-let holdPriority = true, askOrder = true, quiet = false;   // hold priority: nothing resolves until you say so
-try { holdPriority = localStorage.getItem("krark-playtest-hold") !== "off"; askOrder = localStorage.getItem("krark-playtest-ask-order") !== "off"; } catch (e) { /* defaults */ }
+let holdPriority = true, askOrder = true, quiet = false, autoOne = true;   // hold priority: nothing resolves until you say so
+try { holdPriority = localStorage.getItem("krark-playtest-hold") !== "off"; askOrder = localStorage.getItem("krark-playtest-ask-order") !== "off"; autoOne = localStorage.getItem("cge-auto-one") !== "off"; } catch (e) { /* defaults */ }
+/* a choice with only one legal answer makes itself (the log still records what happened); the log drawer turns this off */
+function onlyChoice(list, title, label) {
+  if (!autoOne || list.length !== 1) return false;
+  if (!quiet) toast(`${title.split(/[:?]/)[0]}: ${label} was the only choice.`);
+  return true;
+}
+async function chooseColor(title, cols, art) {
+  if (onlyChoice([...cols], title, COLOR_NAME[cols[0]])) return cols[0];
+  pendingArt = art;
+  return openSheet(title, null, [...cols].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""]));
+}
 function setPref(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* per-browser only */ } }
 function orderPref() { try { return JSON.parse(localStorage.getItem("krark-playtest-order") || "[]"); } catch (e) { return []; } }
 
@@ -1187,7 +1198,7 @@ async function resolveAbility(it) {
   else if (e === "abKinnan") {
     const top = S.lib.splice(0, 5);
     const ok = top.filter(n => (C[n] || {}).k === "creature" && !(C[n].ty || []).includes("Human"));
-    const n = ok.length ? await pickName(`Kinnan: top five are ${top.map(short).join(", ")}. Put a non-Human creature onto the battlefield?`, ok, ok[0], "Put it in", KINNAN) : null;
+    const n = ok.length ? await pickName(`Kinnan: top five are ${top.map(short).join(", ")}. Put a non-Human creature onto the battlefield?`, ok, ok[0], "Put it in", KINNAN, true) : null;
     S.lib.push(...shuffle(top.filter(x => x !== n)));
     log("Kinnan", { saw: top.map(short), put: n ? short(n) : "nothing" });
     if (n) await enterBf(n);
@@ -1305,7 +1316,8 @@ function transformRal(p) {
   toast(`Ral, Leyline Prodigy enters with ${np.loyalty} loyalty.`, "win");
 }
 async function ashlingLoot() {
-  if (S.hand.length) {
+  if (S.hand.length === 1 && onlyChoice(S.hand, "Ashling: discard", short(S.hand[0]))) { const n = S.hand.pop(); toGy(n); log("Ashling", { discarded: short(n) }); }
+  else if (S.hand.length) {
     const pf = pickFrom(S.hand, S.hand[S.hand.length - 1]);
     pendingArt = ASHLING;
     await openSheet(`Ashling magecraft (${(S.ashlingRes || 0) + 1}${["st", "nd", "rd"][S.ashlingRes || 0] || "th"} this turn): discard a card, then draw`, pf.list, [["Discard and draw", "go", "primary"]]);
@@ -1319,6 +1331,7 @@ async function ashlingLoot() {
 }
 async function monkReturn() {
   const gy = [...new Set(S.gy.filter(isSpell))]; if (!gy.length) { log("Pinnacle Monk", { note: "no instant or sorcery in the graveyard" }); return; }
+  if (onlyChoice(gy, "Pinnacle Monk: return", short(gy[0]))) { S.gy.splice(S.gy.indexOf(gy[0]), 1); S.hand.push(gy[0]); log("Pinnacle Monk", { returned: short(gy[0]) }); return; }
   const pf = pickFrom(gy, gy.includes("Twinflame") ? "Twinflame" : gy.includes("Molten Duplication") ? "Molten Duplication" : gy[0]);
   pendingArt = MONK;
   const v = await openSheet("Pinnacle Monk: return an instant or sorcery from your graveyard", pf.list, [["Return it", "go", "primary"], ["None", null]]);
@@ -1328,6 +1341,7 @@ async function monkReturn() {
 async function recruiterFind() {
   const pool = [...new Set(S.lib.filter(n => C[n] && C[n].k === "creature" && printedPower(n) <= 2))].sort((a, b) => short(a).localeCompare(short(b)));
   if (!pool.length) return;
+  if (onlyChoice(pool, "Imperial Recruiter: find", short(pool[0]))) { S.lib.splice(S.lib.indexOf(pool[0]), 1); shuffle(S.lib); S.hand.push(pool[0]); log("Imperial Recruiter", { found: short(pool[0]) }); return; }
   const pf = pickFrom(pool, pool.includes(KILN) ? KILN : pool[0]);
   const v = await openSheet("Imperial Recruiter: find a creature with power 2 or less", pf.list, [["Take it", "go", "primary"], ["Fail to find", null]]);
   if (v !== "go") return;
@@ -1353,6 +1367,7 @@ async function copyFromStack(source, abilities) {
   // a choice made for an earlier copy in this chain is reused while that spell (or another copy of it) is on the stack
   const keep = S.copyAuto && S.copyAuto[source];
   let pick = keep && (cands.find(x => x.id === keep.id) || cands.find(x => x.kind === keep.kind && x.name === keep.name && x.eff === keep.eff));
+  if (!pick && onlyChoice(cands, `${short(source)}: copy`, stackLabel(cands[0]))) pick = cands[0];   // one thing to copy: no question
   if (!pick) {
     const more = quiet || (source === DUAL ? S.stack.some(x => x.kind === "trigger" && x.eff === "dualcaster") : S.stack.some(x => x.name === source));   // the spell, its copies, or Krark / storm triggers that will make more
     let lab = null;
@@ -1442,6 +1457,7 @@ async function etb(p) {   // things that happen as it enters; ETB triggers go on
   else if (id === CAVERN) {
     const types = [...new Set(DECK.cards.concat(COMMANDERS).flatMap(n => (C[n] || {}).k === "creature" ? (C[n].ty || []) : []))].sort();
     const pre = types.includes("Wizard") ? "Wizard" : types[0];
+    if (onlyChoice(types, "Cavern of Souls: type", types[0])) { p.ctype = types[0]; log("Cavern of Souls", { type: p.ctype }); return; }
     const wrap = document.createElement("div"); wrap.className = "form";
     wrap.innerHTML = `<label for="cavT">Creature type</label><select id="cavT">${types.map(t => `<option ${t === pre ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
     pendingArt = id;
@@ -1454,7 +1470,7 @@ async function etb(p) {   // things that happen as it enters; ETB triggers go on
     const land = forests.length ? await pickPerm("Utopia Sprawl: enchant which Forest?", forests, "Enchant it", null, id) : null;
     if (!land || land === "opp") { S.bf = S.bf.filter(q => q !== p); toGy(id); log("Utopia Sprawl", { note: "no Forest to enchant, to graveyard" }); toast("Utopia Sprawl needs a Forest (Bayou, Savannah, Taiga or Tropical Island).", "warn"); return; }
     pendingArt = id;
-    const col = await openSheet("Utopia Sprawl: choose a colour", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""])) || (IDENT || "G")[0];
+    const col = await chooseColor("Utopia Sprawl: choose a colour", IDENT || COLORS, id) || (IDENT || "G")[0];
     land.sprawl = col; p.on = land.uid;
     log("Utopia Sprawl", { on: short(land.name), colour: col });
   }
@@ -1495,6 +1511,7 @@ async function chooseCopyOf(p) {   // only as it enters; the choice can't change
 }
 /* pick several cards from a list; returns the chosen indices, or null if the sheet was closed */
 async function multiPick(title, names, k, pre, exact, art, okLabel) {
+  if (exact && k > 0 && names.length === k && autoOne) { if (!quiet) toast(`${title.split(/[:?]/)[0]}: ${names.map(short).join(", ")} ${k === 1 ? "was the only choice" : "were the only choices"}.`); return names.map((n, i) => i); }
   const sel = [...pre];
   const wrap = document.createElement("div");
   const info = document.createElement("p"); info.className = "info"; info.style.margin = "0 0 8px";
@@ -1535,6 +1552,12 @@ function landAmt(p) { return p.asLand ? 1 : ((C[ident(p)] || {}).amt || 1); }
 /* discard exactly k cards (or the whole hand if it is smaller), picked by the player */
 async function discardCards(k, source) {
   k = Math.min(k, S.hand.length); if (!k) return;
+  if (k === S.hand.length && autoOne) {   // the whole hand: nothing to choose
+    const names = S.hand.splice(0); toGy(...names);
+    log("discard", { c: short(source), cards: names.map(short) });
+    if (!quiet) toast(`${short(source)}: discarded your whole hand (${names.map(short).join(", ")}).`);
+    return;
+  }
   const sel = [];
   const wrap = document.createElement("div");
   const list = cardList(S.hand, (n, i, b) => {
@@ -1635,7 +1658,8 @@ const KEFKA_SPELLS = ["Beseech the Mirror", "Chain of Vapor", "Commandeer", "Dem
 const KIND_WORD = { land: "Land", creature: "Creature", instant: "Instant", sorcery: "Sorcery", artifact: "Artifact", enchantment: "Enchantment", planeswalker: "Planeswalker", battle: "Battle" };
 function permLabel(p) { return short(p.name) + (p.copyOf && p.copyOf !== p.name ? " as " + short(p.copyOf) : "") + (p.token ? " (token)" : ""); }
 /* one of your permanents, or something an opponent controls that the page doesn't track */
-async function pickPerm(title, perms, okLabel, oppLabel, art, oppFirst) {
+async function pickPerm(title, perms, okLabel, oppLabel, art, oppFirst, optional) {   // optional: "may" or "up to one", so declining is a real answer
+  if (!oppLabel && !optional && onlyChoice(perms, title, permLabel(perms[0] || { name: "" }))) return perms[0];
   const wrap = document.createElement("div"); wrap.className = "picklist";
   let tgt = perms[0] || null;
   perms.forEach(p => { const b = document.createElement("button"); b.className = "pick mine" + (p === tgt ? " sel" : ""); b.textContent = permLabel(p); b.onclick = () => { tgt = p; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
@@ -1649,7 +1673,9 @@ async function pickPerm(title, perms, okLabel, oppLabel, art, oppFirst) {
   const v = await openSheet(title, wrap, btns);
   return v === "go" ? tgt : v === "opp" ? "opp" : null;
 }
-async function pickName(title, names, pre, okLabel, art) {
+async function pickName(title, names, pre, okLabel, art, optional) {
+  const uniq = [...new Set(names)];
+  if (!optional && onlyChoice(uniq, title, short(uniq[0] || ""))) return uniq[0];
   pendingArt = art;
   if (names.length > 12) {   // long lists (tutors, Consultation, Chord) get grouping and a search box
     let picked = pre === undefined ? null : pre;
@@ -1715,7 +1741,7 @@ async function additionalCost(name, cost, opts = {}, zone) {
   }
   if (zone === "harmonize") {   // tap a creature to take its power off the generic part
     const crs = S.bf.filter(q => isCreatureP(q) && !q.tapped && power(q) > 0);
-    const q = crs.length ? await pickPerm("Harmonize: tap a creature to reduce the cost by its power?", crs, "Tap it", null, name) : null;
+    const q = crs.length ? await pickPerm("Harmonize: tap a creature to reduce the cost by its power?", crs, "Tap it", null, name, false, true) : null;
     if (q && q !== "opp") { q.tapped = true; cost.g = Math.max(0, cost.g - power(q)); out.item.harmonized = permLabel(q); }
   }
   if (name === "Eldritch Evolution") {
@@ -1731,7 +1757,7 @@ async function additionalCost(name, cost, opts = {}, zone) {
   if (name === "Beseech the Mirror") {
     const fodder = S.bf.filter(p => p.token || ["artifact", "enchantment"].some(k => cardTypes(ident(p)).includes(k)));
     if (fodder.length) {
-      const p = await pickPerm("Beseech the Mirror: bargain? Sacrifice an artifact, enchantment or token", fodder, "Sacrifice it", null, name);
+      const p = await pickPerm("Beseech the Mirror: bargain? Sacrifice an artifact, enchantment or token", fodder, "Sacrifice it", null, name, false, true);
       if (p && p !== "opp") { out.sac = p; out.item.bargain = true; }
     }
   } else if (name === "Fire Covenant" || name === "Toxic Deluge") {
@@ -1776,7 +1802,7 @@ async function kefkaSpell(name, it) {
     leaveBf(p, "hand", "Chain of Vapor");
     const lands = S.bf.filter(q => (C[ident(q)] || {}).k === "land" || q.asLand);
     if (!lands.length) return;
-    const l = await pickPerm("Chain of Vapor: sacrifice a land to copy it?", lands, "Sacrifice and copy", null, name);
+    const l = await pickPerm("Chain of Vapor: sacrifice a land to copy it?", lands, "Sacrifice and copy", null, name, false, true);
     if (!l || l === "opp") return;
     leaveBf(l, "die", "Chain of Vapor copy");
     S.stack.push({ id: S.nextId++, kind: "copy", name }); S.turnStats.copies++;
@@ -1820,7 +1846,7 @@ async function kefkaSpell(name, it) {
   } else if (name === "Flashback") await grantFlashback(name);
   else if (name === "Reanimate") {
     const gy = [...new Set(S.gy.filter(n => (C[n] || {}).k === "creature"))];
-    const n = gy.length ? await pickName("Reanimate: return which creature card?", gy, gy[0], "Return it", name) : null;
+    const n = gy.length ? await pickName("Reanimate: return which creature card?", gy, gy[0], "Return it", name, true) : null;
     if (!n) { log("effect", { c: "Reanimate", note: "a creature from an opponent's graveyard (by hand)" }); return; }
     S.gy.splice(S.gy.lastIndexOf(n), 1);
     const mv = (C[n] || {}).mv || 0; S.life -= mv;
@@ -1889,7 +1915,7 @@ async function kefkaSpell(name, it) {
 }
 async function grantFlashback(source) {
   const gy = [...new Set(S.gy.filter(isSpell))];
-  const n = gy.length ? await pickName(`${short(source)}: give which instant or sorcery flashback?`, gy, gy[0], "Give it flashback", source) : null;
+  const n = gy.length ? await pickName(`${short(source)}: give which instant or sorcery flashback?`, gy, gy[0], "Give it flashback", source, source === SNAPCASTER) : null;
   if (!n) { log("effect", { c: short(source), note: "no instant or sorcery in the graveyard" }); return; }
   S.fb = { ...(S.fb || {}), [n]: S.turn };
   log("flashback", { c: short(n), by: short(source), cost: C[n].c || "0" });
@@ -1976,7 +2002,7 @@ async function remoraUpkeep(it) {
 /* Gogo copies another creature until end of turn; Irma for good, keeping her own ability */
 async function copyCreature(it, who) {
   const p = S.bf.find(q => q.uid === it.src); if (!p) return;
-  const t = await pickPerm(`${short(p.name)}: become a copy of which creature?`, S.bf.filter(q => q !== p && isCreatureP(q)), "Copy it", null, p.name);
+  const t = await pickPerm(`${short(p.name)}: become a copy of which creature?`, S.bf.filter(q => q !== p && isCreatureP(q)), "Copy it", null, p.name, false, true);
   if (who === "irma") p.counters = (p.counters || 0) + 1;
   if (!t || t === "opp") { log(short(p.name), { note: "copied nothing" }); return; }
   p.copyOf = ident(t); if (backUp(t)) p.copyBack = true; else delete p.copyBack;
@@ -1989,7 +2015,7 @@ async function copyCreature(it, who) {
 async function resolveKefkaTrigger(it) {
   const e = it.eff;
   if (e === "kitten") {
-    const p = await pickPerm("Displacer Kitten: exile and return which nonland permanent?", S.bf.filter(q => (C[ident(q)] || {}).k !== "land" && !q.asLand), "Flicker it", null, KITTEN);
+    const p = await pickPerm("Displacer Kitten: exile and return which nonland permanent?", S.bf.filter(q => (C[ident(q)] || {}).k !== "land" && !q.asLand), "Flicker it", null, KITTEN, false, true);
     if (p && p !== "opp") await flicker(p, KITTEN); else log("Displacer Kitten", { note: "no target" });
   } else if (e === "ruler") draw(it.n, "Kefka, Ruler of Ruin");
   else if (e === "kefka") await kefkaDiscards(it);
@@ -2146,7 +2172,7 @@ async function targetFx(name, it) {
   if (fx.kari) {   // may cast a spell with mana value 2 or less from hand for free
     const ok = S.hand.filter(n => C[n] && C[n].k !== "land" && (C[n].mv || 0) <= 2);
     if (ok.length) {
-      const n = await pickName("Kari Zev's Expertise: cast a spell with mana value 2 or less for free?", ok, ok[0], "Cast it free", name);
+      const n = await pickName("Kari Zev's Expertise: cast a spell with mana value 2 or less for free?", ok, ok[0], "Cast it free", name, true);
       if (n) await cast(n, "hand", { free: true, alt: "Kari Zev's Expertise", noSnap: true });
     }
   }
@@ -2740,10 +2766,13 @@ async function tutor(source) {
   if (c.life) S.life -= c.life;
   const pool = S.lib.filter(ok).sort((a, b) => short(a).localeCompare(short(b)));
   if (!pool.length) { log("tutor", { c: short(source), found: "nothing", note: what.trim() || undefined, life: c.life ? -c.life : undefined }); shuffle(S.lib); toast(`${short(source)} found nothing${what}.`, "warn"); return; }
-  let picked = null;
-  const list = groupedPicker(pool, n => { picked = n; });
-  pendingArt = source;
-  const v = await openSheet(`${short(source)}: search your library${what}${toTop ? " (goes on top)" : ""}`, list, [["Take it", "take", "primary"], ["Cancel", null]]);
+  let picked = null, v = "take";
+  if (onlyChoice([...new Set(pool)], `${short(source)}: find`, short(pool[0]))) picked = pool[0];
+  else {
+    const list = groupedPicker(pool, n => { picked = n; });
+    pendingArt = source;
+    v = await openSheet(`${short(source)}: search your library${what}${toTop ? " (goes on top)" : ""}`, list, [["Take it", "take", "primary"], ["Cancel", null]]);
+  }
   if (v !== "take" || !picked) { if (c.life) log("tutor", { c: short(source), found: "nothing", life: -c.life }); return; }
   S.lib.splice(S.lib.indexOf(picked), 1); shuffle(S.lib);
   if (toTop) S.lib.unshift(picked); else S.hand.push(picked);
@@ -2758,6 +2787,7 @@ async function chooseCloneTarget(source, n) {
   // a choice made earlier in this chain (or this repeated-cast run) is reused while that card is still around
   const keep = S.cloneAuto && S.cloneAuto[source];
   if (keep && names.includes(keep)) return keep;
+  if (onlyChoice(names, `${short(source)}: copy`, short(names[0]))) return names[0];
   let picked = sakaOut() && names.includes(KRARK) ? KRARK : names[0];
   const list = cardList(names, (nm, i, b) => { picked = nm; [...list.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); });
   [...list.children].forEach((x, i) => { if (names[i] === picked) x.classList.add("sel"); });
@@ -3027,7 +3057,7 @@ async function bfMenu(uid) {
     const wrap = document.createElement("div"); wrap.className = "picklist";
     let tgt = cands.find(q => ident(q) === KRARK && !q.staff) || cands[0];
     cands.forEach(q => { const b = document.createElement("button"); b.className = "pick" + (q === tgt ? " sel" : ""); b.textContent = `${short(q.name)}${q.copyOf && q.copyOf !== q.name ? " as " + short(q.copyOf) : ""}${q.token ? " (token)" : ""} · {${typesOf(q).includes("Wizard") ? 1 : 3}}`; b.onclick = () => { tgt = q; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
-    const r = await openSheet("Wizard's Staff: equip which creature? Equip Wizard {1}, others {3}", wrap, [["Equip", "go", "primary"], ["Cancel", null]]);
+    const r = onlyChoice(cands, "Wizard's Staff: equip", permLabel(cands[0])) ? "go" : await openSheet("Wizard's Staff: equip which creature? Equip Wizard {1}, others {3}", wrap, [["Equip", "go", "primary"], ["Cancel", null]]);
     if (r !== "go") { dropSnapshot(); return; }
     const g = typesOf(tgt).includes("Wizard") ? 1 : 3, tuid = tgt.uid;
     const pay = autoPay({ g, R: 0, U: 0 }, false);
@@ -3039,7 +3069,7 @@ async function bfMenu(uid) {
   if (v === "harnfel") {
     const pf = pickFrom(S.hand, S.hand[S.hand.length - 1]);
     pendingArt = BIRGI;
-    const r = await openSheet(`${HARNFEL}: discard which card?`, pf.list, [["Discard and exile two", "go", "primary"], ["Cancel", null]]);
+    const r = onlyChoice(S.hand, "Harnfel: discard", short(S.hand[0])) ? "go" : await openSheet(`${HARNFEL}: discard which card?`, pf.list, [["Discard and exile two", "go", "primary"], ["Cancel", null]]);
     if (r !== "go") { dropSnapshot(); return; }
     const d = pf.get(); S.hand.splice(S.hand.indexOf(d), 1); toGy(d);
     log("Harnfel", { discarded: short(d) });
@@ -3072,9 +3102,7 @@ async function bfMenu(uid) {
     log("Kefka", { ability: "{8} paid", tapped: pay.tapped });
     await pushAbility("abKefka8", { src: uid });
   } else if (v === "led") {
-    const cols = IDENT || COLORS;
-    pendingArt = LED;
-    const col = await openSheet("Lion's Eye Diamond: three mana of which colour?", null, [...cols].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""]));
+    const col = await chooseColor("Lion's Eye Diamond: three mana of which colour?", IDENT || COLORS, LED);
     if (!col) { dropSnapshot(); return; }
     const hand = [...S.hand]; S.hand = []; toGy(...hand);
     S.bf = S.bf.filter(q => q !== p); if (!p.token) toGy(p.name);
@@ -3092,13 +3120,12 @@ async function bfMenu(uid) {
     if (v !== "drsMana") { p.tapped = true; const pay = autoPay(v === "drsB" ? { B: 1 } : { G: 1 }, false); if (!pay.ok) { dropSnapshot(); const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = false; toast(`That costs {${v === "drsB" ? "B" : "G"}}.`, "bad"); return; } }
     const mine = [...new Set(S.gy.filter(fits))];
     const what = { land: "land", instsorc: "instant or sorcery", creature: "creature" }[kind];
-    const n = mine.length ? await pickName(`Deathrite Shaman: exile which ${what} card from your graveyard?`, mine, mine[0], "Exile it", "Deathrite Shaman") : null;
+    const n = mine.length ? await pickName(`Deathrite Shaman: exile which ${what} card from your graveyard?`, mine, mine[0], "Exile it", "Deathrite Shaman", true) : null;
     if (!n) { const ok = await openSheet(`No ${what} card in your graveyard. Exile one from an opponent's graveyard?`, null, [["Yes", "yes", "primary"], ["Cancel", null]]); if (ok !== "yes") { dropSnapshot(); return; } }
     const q = S.bf.find(x => x.uid === uid); if (q) q.tapped = true;
     if (v === "drsMana") {   // a mana ability: no stack
       if (n) { S.gy.splice(S.gy.lastIndexOf(n), 1); S.ex.push({ n }); }
-      pendingArt = "Deathrite Shaman";
-      const col = await openSheet("Deathrite Shaman: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""])) || (IDENT || "G")[0];
+      const col = await chooseColor("Deathrite Shaman: which colour?", IDENT || COLORS, "Deathrite Shaman") || (IDENT || "G")[0];
       addMana(col, 1); log("Deathrite Shaman", { exiled: n ? short(n) : "an opponent's land", mana: col });
     } else await pushAbility(v === "drsB" ? "abDrsB" : "abDrsG", { src: uid, card: n || null });   // the card is exiled on resolution
   } else if (v === "kinnan") {
@@ -3109,8 +3136,7 @@ async function bfMenu(uid) {
   } else if (v === "oppdrew") await oppDrew(S.target, short(p.name));
   else if (v === "gleam") { if (!(await gleamingSplendor())) { dropSnapshot(); return; } } else if (v === "food") { S.bf.push({ uid: S.nextId++, name: FOOD, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "Food", by: "The Cabbage Merchant" }); }
   else if (v === "foodmana") {
-    pendingArt = "The Cabbage Merchant";
-    const col = await openSheet("Tap two Foods: which colour?", null, [...(IDENT || COLORS)].map((x, i) => [COLOR_NAME[x], x, i === 0 ? "primary" : ""]));
+    const col = await chooseColor("Tap two Foods: which colour?", IDENT || COLORS, "The Cabbage Merchant");
     if (!col) { dropSnapshot(); return; }
     S.bf.filter(q => ident(q) === FOOD && !q.tapped).slice(0, 2).forEach(q => { q.tapped = true; });
     addMana(col, 1); log("The Cabbage Merchant", { tapped: "two Foods", mana: col });
@@ -3970,6 +3996,8 @@ document.addEventListener("keydown", ev => {   // R resolves the top of the stac
 $("optHold").checked = holdPriority; $("optAsk").checked = askOrder;
 $("optSim").checked = simOpps;
 $("optSim").onchange = e => { simOpps = e.target.checked; setPref("cge-sim-opps", simOpps ? "on" : "off"); };
+$("optOne").checked = autoOne;
+$("optOne").onchange = e => { autoOne = e.target.checked; setPref("cge-auto-one", autoOne ? "on" : "off"); };
 $("optHold").onchange = e => { holdPriority = e.target.checked; setPref("krark-playtest-hold", holdPriority ? "on" : "off"); };
 $("optAsk").onchange = e => { askOrder = e.target.checked; setPref("krark-playtest-ask-order", askOrder ? "on" : "off"); };
 // a card image that fails to load falls back to the text tile

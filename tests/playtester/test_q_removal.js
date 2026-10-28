@@ -4,7 +4,8 @@ const { table, check } = require('./lib');
 (async () => {
   const T = await table();
   const { ev, go, press, pick, state } = T;
-  const setup = (h, b) => T.setup(h, b, 'q');
+  // Reforge the Soul drawn in a turn pass would stop for its miracle; the wheels test puts it on top itself
+  const setup = async (h, b) => { await T.setup(h, b, 'q'); await ev(() => { S.lib = S.lib.filter(n => n !== 'Reforge the Soul'); }); };
   const resolve = async () => { await go(() => { resolveTop(); }); };
 
   // Fireblast: sacrifice two Mountains (tapped ones first) instead of paying
@@ -18,12 +19,11 @@ const { table, check } = require('./lib');
   // Flare of Duplication: sacrifice a nontoken red creature to copy a spell
   await setup(['Lightning Bolt', 'Flare of Duplication'], ['Ragavan, Nimble Pilferer', 'Mountain']);
   await go(() => cast('Lightning Bolt', 'hand')); await press('Target it');
-  await go(() => handMenu('Flare of Duplication')); await press('Sacrifice a nontoken red creature');
-  await press('Sacrifice it'); await T.p.waitForTimeout(100);
+  await go(() => handMenu('Flare of Duplication')); await press('Sacrifice a nontoken red creature');   // Ragavan is the only one await T.p.waitForTimeout(100);
   check('Ragavan was sacrificed and Flare is on the stack for free', await state(() => S.gy.includes('Ragavan, Nimble Pilferer') && S.stack.some(x => x.name === 'Flare of Duplication')));
   await resolve();
-  check('Flare asks what to copy', (await T.title()).startsWith('Flare of Duplication: copy what?'));
-  await press('Copy it'); await T.resolveAll(); await T.p.waitForTimeout(100);
+  check('Lightning Bolt is the only spell to copy, so Flare copies it without asking', await state(() => S.stack.some(x => x.kind === 'copy' && x.name === 'Lightning Bolt')));
+  await T.resolveAll(); await T.p.waitForTimeout(100);
   check('Bolt and its copy: 6 damage', await state(() => S.opp[0].life === 34));
 
   // Abrade destroys your own artifact, or hits an opponent's creature
@@ -60,8 +60,7 @@ const { table, check } = require('./lib');
   await setup(['Sundering Eruption // Volcanic Fissure'], ['Ancient Tomb', 'Mountain', 'Mountain', 'Mountain']);
   await ev(() => { S.lib.push('Mountain'); S.bf[0].tapped = true; });
   await go(() => cast('Sundering Eruption // Volcanic Fissure', 'hand')); await resolve();
-  await pick('Ancient Tomb'); await press('Destroy mine');
-  await press('Put it in');
+  await pick('Ancient Tomb'); await press('Destroy mine');   // the basic Mountain is the only land to find
   check('Ancient Tomb destroyed, a tapped Mountain fetched, and the no-blocks note', await state(() => S.gy.includes('Ancient Tomb') && S.bf.filter(p => p.name === 'Mountain').length === 4 && S.bf[S.bf.length - 1].tapped && /can't block/.test(document.getElementById('banner').textContent)));
 
   // Shatterskull Smashing with X = 6 deals 12, divided

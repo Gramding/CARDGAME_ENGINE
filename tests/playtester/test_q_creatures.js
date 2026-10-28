@@ -4,7 +4,8 @@ const { table, check } = require('./lib');
 (async () => {
   const T = await table();
   const { ev, go, press, pick, state } = T;
-  const setup = (h, b) => T.setup(h, b, 'q');
+  // Reforge the Soul drawn in a turn pass would stop for its miracle; the wheels test puts it on top itself
+  const setup = async (h, b) => { await T.setup(h, b, 'q'); await ev(() => { S.lib = S.lib.filter(n => n !== 'Reforge the Soul'); }); };
   const resolve = async () => { await go(() => { resolveTop(); }); };
   const menu = async (name, btn) => { await go(n => bfMenu(S.bf.find(p => p.name === n).uid), name); await press(btn); };
 
@@ -13,9 +14,8 @@ const { table, check } = require('./lib');
   await ev(() => { S.bf[0].etbTurn = S.turn; render(); });
   await go(() => bfMenu(S.bf[0].uid));
   check('Kiki-Jiki has haste: it can tap the turn it arrives', await state(() => [...document.querySelectorAll('#sheetButtons button')].some(b => b.textContent.startsWith('{T}: a hasty token copy'))));
-  await press('{T}: a hasty token copy');
-  check('It offers Zealous Conscripts (Kiki is legendary)', (await T.title()).startsWith('Kiki-Jiki: copy which') && await state(() => [...document.querySelectorAll('#sheetBody .pick')].map(b => b.textContent).join() === 'Zealous Conscripts'));
-  await press('Copy it'); await T.p.waitForTimeout(150);
+  await press('{T}: a hasty token copy'); await T.p.waitForTimeout(150);
+  check('Zealous Conscripts is the only nonlegendary creature, so Kiki copies it without asking', await state(() => /Zealous Conscripts was the only choice/.test(document.getElementById('banner').textContent) || S.stack.some(x => x.eff === 'conscripts')));
   check('A hasty Conscripts token, gone at end of turn; its trigger is on the stack', await state(() => S.bf.some(p => p.token && p.name === 'Zealous Conscripts' && p.temp && p.hasteTurn === S.turn) && S.stack.some(x => x.eff === 'conscripts') && S.bf[0].tapped));
   await resolve();
   check('The trigger points at Kiki-Jiki first', (await T.title()).startsWith('Zealous Conscripts: gain control') && await state(() => document.querySelector('#sheetBody .pick.sel').textContent.startsWith('Kiki-Jiki')));
@@ -43,7 +43,7 @@ const { table, check } = require('./lib');
   check('A Treasure, and 2 damage', await state(() => S.treasures === 1 && S.opp[0].life === 38));
   await ev(() => { nextTurn(); }); await T.p.waitForTimeout(250);
   await menu('Fable of the Mirror-Breaker // Reflection of Kiki-Jiki', '{1}, {T}: a hasty token copy');
-  await press('Copy it'); await T.p.waitForTimeout(150);
+  await T.p.waitForTimeout(150);   // the Goblin Shaman is the only thing it can copy
   check('Reflection paid {1} and copied the Goblin Shaman with haste', await state(() => S.bf.filter(p => p.name === 'Goblin Shaman Token').length === 2 && S.bf.some(p => p.name === 'Goblin Shaman Token' && p.temp && p.hasteTurn === S.turn)));
 
   // Fury: evoked for a red card, 4 damage divided, then sacrificed; double strike in combat
@@ -51,7 +51,7 @@ const { table, check } = require('./lib');
   await ev(() => { S.bf[0].counters = 1; });
   await go(() => handMenu('Fury'));
   check('Fury offers evoke for a red card', await state(() => [...document.querySelectorAll('#sheetButtons button')].some(b => b.textContent === 'Evoke: exile a red card')));
-  await press('Evoke'); await press('Exile and cast'); await T.p.waitForTimeout(150);
+  await press('Evoke'); await T.p.waitForTimeout(150);   // Abrade is the only other red card
   check('Abrade exiled, Fury in play with its ETB and evoke triggers', await state(() => S.ex.some(e => e.n === 'Abrade') && S.bf.some(p => p.name === 'Fury') && S.stack.map(x => x.eff).join() === 'evoke,fury'));
   await resolve();
   check('Fury asks how to divide 4 damage', (await T.title()).startsWith('Fury: divide 4 damage'));
