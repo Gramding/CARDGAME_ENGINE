@@ -18,8 +18,7 @@ const { table, check } = require('./lib');
   check('Hybrid cost parses into four either-or pips', await state(() => JSON.stringify(parseCost(C['Nephilim Epochal'].c).hyb) === '["UR","RG","GW","WB"]'));
   await go(k => zoneMenu('cmd', k), EPOCHAL); await press('Cast (tax 0)'); await T.p.waitForTimeout(200);
   check('Epochal paid with all four lands and resolved', await state(() => S.bf.filter(p => p.tapped).length === 4 && S.bf.some(p => p.name === 'Nephilim Epochal')));
-  await pick('Ink-Treader'); await press('Take it');
-  check('Epochal ETB found Ink-Treader Nephilim', await state(() => S.hand.includes('Ink-Treader Nephilim')));
+  check('Epochal ETB found Ink-Treader Nephilim, the only Nephilim left, without asking', await state(() => S.hand.includes('Ink-Treader Nephilim')));
   await setup(['Deathrite Shaman'], ['Taiga']);
   await go(() => cast('Deathrite Shaman', 'hand'));
   check('Deathrite Shaman {B/G} paid with green', await state(() => S.bf.some(p => p.name === 'Deathrite Shaman') && S.bf[0].tapped));
@@ -117,7 +116,7 @@ const { table, check } = require('./lib');
 
   // Eldritch Evolution sacrificing a one-drop finds a three-drop
   await setup(['Eldritch Evolution'], ['Llanowar Elves', 'Taiga', 'Bayou', 'Savannah']);
-  await go(() => cast('Eldritch Evolution', 'hand')); await pick('Llanowar'); await press('Sacrifice it');
+  await go(() => cast('Eldritch Evolution', 'hand'));   // Llanowar Elves is the only creature to sacrifice
   await resolve(); await pick('Spellseeker'); await press('Put it in'); await T.p.waitForTimeout(150);
   check('Eldritch Evolution: Elves sacrificed, Spellseeker in, spell exiled', await state(() => S.gy.includes('Llanowar Elves') && S.bf.some(p => p.name === 'Spellseeker') && S.ex.some(e => e.n === 'Eldritch Evolution')));
 

@@ -73,13 +73,13 @@ const { table, check } = require('./lib');
 
   // Force of Negation pitching a blue card exiles what it counters
   await setup(['Demonic Tutor', 'Force of Negation', 'Dispel'], ['Underground Sea', 'Sol Ring']);
-  await go(() => cast('Demonic Tutor', 'hand')); await go(() => handMenu('Force of Negation')); await press('Exile a blue card'); await press('Exile and cast');
+  await go(() => cast('Demonic Tutor', 'hand')); await go(() => handMenu('Force of Negation')); await press('Exile a blue card');   // Dispel is the only blue card, so it goes without asking
   await resolve(); await press('Counter it');
   check('Force of Negation exiled the countered spell', await state(() => S.ex.some(e => e.n === 'Demonic Tutor') && S.ex.some(e => e.n === 'Dispel')));
 
   // Commandeer for two blue cards
   await setup(['Commandeer', 'Dispel', 'Spell Pierce'], []);
-  await go(() => handMenu('Commandeer')); await press('Exile two blue cards'); await press('Exile and cast');
+  await go(() => handMenu('Commandeer')); await press('Exile two blue cards');   // exactly two blue cards: no picking
   check('Commandeer cast for two blue cards', await state(() => S.ex.length === 2 && S.stack.some(x => x.name === 'Commandeer')));
 
   // Gilded Drake: no exchange means sacrifice; an exchange gives it away

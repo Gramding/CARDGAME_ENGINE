@@ -4,7 +4,8 @@ const { table, check } = require('./lib');
 (async () => {
   const T = await table();
   const { ev, go, press, pick, state } = T;
-  const setup = (h, b) => T.setup(h, b, 'q');
+  // Reforge the Soul drawn in a turn pass would stop for its miracle; the wheels test puts it on top itself
+  const setup = async (h, b) => { await T.setup(h, b, 'q'); await ev(() => { S.lib = S.lib.filter(n => n !== 'Reforge the Soul'); }); };
   const resolve = async () => { await go(() => { resolveTop(); }); };
 
   // Grapeshot with storm 5: the copies are spread over the opponents you choose

@@ -36,6 +36,11 @@ Kinnan, Deathrite Shaman, channel and the rest) sit on the stack until you press
 respond first. Mana abilities stay instant. Turn off "Hold priority" in the log drawer to let a lone item
 resolve by itself.
 
+A choice with only one legal answer makes itself, with a short note: the only colour in a mono-red deck,
+the only card a tutor can find, the only spell Flare of Duplication can copy, or a discard of your whole
+hand. Choices where declining is legal still ask, such as Displacer Kitten's "up to one" or Kari Zev's
+Expertise's "may cast". The log drawer has a switch to turn this off.
+
 Passing the turn plays your opponents' turns at random: how many spells each casts (creature or
 not) and how many cards they draw, on their turn and off it. Cards that watch opponents, such as
 Rhystic Study, Mystic Remora, Esper Sentinel, Smothering Tithe and Tataru Taru, trigger from that, and

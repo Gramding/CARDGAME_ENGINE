@@ -49,7 +49,7 @@ const { table, check } = require('./lib');
   // Minamo untaps a legendary permanent
   await setup([], ["Minamo, School at Water's Edge", 'Island', 'Krark, the Thumbless']);
   await ev(() => { S.bf[2].tapped = true; });
-  await go(() => bfMenu(S.bf[0].uid)); await press('{U}, tap'); await pick('Krark'); await press('Untap it');
+  await go(() => bfMenu(S.bf[0].uid)); await press('{U}, tap');   // Krark is the only tapped legend
   check('Minamo untapped Krark', await state(() => !S.bf.find(p => p.name === 'Krark, the Thumbless').tapped && S.bf[0].tapped && S.bf[1].tapped));
 
   // Tavern Scoundrel flips for itself

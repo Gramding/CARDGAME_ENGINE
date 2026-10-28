@@ -22,8 +22,8 @@ const { table, check } = require('./lib');
 
   // Essence Flux on a Spirit adds a counter
   await setup(['Essence Flux'], ['Simian Spirit Guide', 'Underground Sea']);
-  await go(() => cast('Essence Flux', 'hand')); await resolve(); await pick('Simian Spirit Guide'); await press('Flicker it');
-  check('Essence Flux: Spirit back with a +1/+1 counter', await state(() => S.bf.find(p => p.name === 'Simian Spirit Guide').counters === 1));
+  await go(() => cast('Essence Flux', 'hand')); await resolve();
+  check('Essence Flux: its only target, the Spirit, came back with a +1/+1 counter', await state(() => S.bf.find(p => p.name === 'Simian Spirit Guide').counters === 1));
 
   // Chain of Vapor on your own Sol Ring, sacrificing a land to copy it
   await setup(['Chain of Vapor'], ['Sol Ring', 'Underground Sea', 'Volcanic Island']);
@@ -37,7 +37,7 @@ const { table, check } = require('./lib');
   await setup(['Snapcaster Mage'], ['Underground Sea', 'Volcanic Island', 'Watery Grave']);
   await ev(() => { S.gy = ['Dark Ritual']; });
   await go(() => cast('Snapcaster Mage', 'hand')); await T.resolveAll(); await T.p.waitForTimeout(150);
-  await press('Give it flashback');
+  await press('Give it flashback');   // Snapcaster's target is up to one, so it still asks
   check('Dark Ritual has flashback this turn', await state(() => hasFlashback('Dark Ritual')));
   await go(() => zoneMenu('gy', 'Dark Ritual')); await press('Flashback');
   await T.resolveAll();
@@ -46,13 +46,12 @@ const { table, check } = require('./lib');
   // the Flashback card does the same
   await setup(['Flashback'], ['Volcanic Island']);
   await ev(() => { S.gy = ['Gamble']; });
-  await go(() => cast('Flashback', 'hand')); await resolve(); await press('Give it flashback');
+  await go(() => cast('Flashback', 'hand')); await resolve();   // Gamble is the only choice
   check('Flashback gives Gamble flashback', await state(() => hasFlashback('Gamble') && S.gy.includes('Flashback')));
 
   // Subtlety evoked by pitching a blue card: ETB and evoke sacrifice both trigger
   await setup(['Subtlety', 'Dispel'], []);
-  await go(() => handMenu('Subtlety')); await press('Evoke');
-  await press('Exile and cast');
+  await go(() => handMenu('Subtlety')); await press('Evoke');   // Dispel is the only blue card to pitch
   check('Dispel exiled to evoke Subtlety', await state(() => S.ex.some(e => e.n === 'Dispel')));
   await T.resolveAll(); await T.p.waitForTimeout(150);
   check('Subtlety ETB asks for a target', (await T.title()).startsWith('Subtlety'), await T.title());
