@@ -1,7 +1,7 @@
 # Cardgame engine
 
-A browser playtester for Commander goldfishing. It ships with three cEDH decks (Krark, the Thumbless +
-Sakashima of a Thousand Faces, Kefka, Court Mage, and Nephilim Epochal) and plays any deck you import. There is also a
+A browser playtester for Commander goldfishing. It ships with four cEDH decks (Krark, the Thumbless +
+Sakashima of a Thousand Faces, Kefka, Court Mage, Nephilim Epochal, and Q, Stacking the Deck) and plays any deck you import. There is also a
 Python simulator for the Krark deck. The plan is to grow the playtester
 into a general engine where card behaviour lives in per-card scripts and anything unscripted can
 still be played by hand.
@@ -59,6 +59,14 @@ chips show library and hand, and the hand counter in the top bar adjusts the tar
   harmonize, mana creatures that can't tap the turn they arrive, Gaea's Cradle, Kinnan, Utopia Sprawl
   and Enduring Vitality. Smothering Tithe, Tataru Taru and the other cards that react to opponents get
   a button for "an opponent drew" or "an opponent cast a spell".
+- **Q, Stacking the Deck:** Q's trigger exiles a nonland card. The exile viewer then copies it for a
+  card from your hand, one at a time or several in a row. Grapeshot's storm copies can be aimed at any
+  opponent, and wheels refill your hand. Reforge the Soul offers its miracle cost when it's the first
+  card you draw in a turn. Ruby Medallion and Cloud Key lower costs. Aetherflux Reservoir and both Saga
+  cards are scripted, and the page calls the Kiki-Jiki + Zealous Conscripts loop a win. Blood Moon
+  turns your nonbasic lands into Mountains. Alternative costs work for Fireblast, Flare of
+  Duplication, Fury's evoke and Ragavan's dash. Mana Geyser asks how many lands your opponents have
+  tapped, since the page doesn't track their boards.
 
 Build and open it locally:
 
