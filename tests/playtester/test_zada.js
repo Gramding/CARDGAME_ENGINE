@@ -24,6 +24,13 @@ const ZADA = 'Zada, Hedron Grinder';
   await T.resolveAll(); await T.p.waitForTimeout(150);
   check('Four cards drawn and every creature can attack this turn', await state(h => S.hand.length === h - 1 + 4 && S.bf.filter(isCreatureP).every(p => !sick(p)), h0), await state(() => S.hand.length));
 
+  // each copy is a copy of an instant or sorcery: magecraft triggers for it
+  await setup(['Accelerate'], [ZADA, 'Storm-Kiln Artist', ...gob(2), 'Mountain', 'Mountain']);
+  await go(() => cast('Accelerate', 'hand')); await press('Target it');
+  check('Casting it: one Storm-Kiln trigger', await state(() => S.stack.filter(x => x.eff === 'kiln').length === 1));
+  await T.resolveAll(); await T.p.waitForTimeout(150);
+  check('Three copies (Kiln and two Goblins), three more Kiln triggers: four Treasures', await state(() => S.treasures === 4 && S.turnLog.some(e => e.a === 'Zada' && e.copies === 3)), await state(() => S.treasures));
+
   // Traitorous Greed through Zada: every resolution untaps and adds RR (red is the only colour in this deck)
   await setup(['Traitorous Greed'], [ZADA, ...gob(3), ...Array(4).fill('Mountain')]);
   await ev(() => { S.bf.filter(p => p.name === 'Goblin Token').forEach(p => { p.tapped = true; }); });

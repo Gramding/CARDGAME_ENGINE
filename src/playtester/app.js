@@ -2288,6 +2288,7 @@ async function inkCopies(it) {
     S.turnStats.copies += mine.length;
     log("Zada", { c: short(it.name), copies: mine.length, zadaGone: ink ? undefined : true });
     toast(`Zada: ${mine.length} cop${mine.length === 1 ? "y" : "ies"} of ${short(it.name)}, one for each other creature you control.`, "win");
+    await copyMagecraft(mine.length, it.name);
     return;
   }
   const board = oppBoard(), alive = aliveOpps();
@@ -2297,6 +2298,13 @@ async function inkCopies(it) {
   S.turnStats.copies += mine.length + opp;
   log("Ink-Treader Nephilim", { c: short(it.name), copies: mine.length + opp, yours: mine.length, opponents: alive.map(i => board.n[i]).join("+"), inkGone: ink ? undefined : true });
   toast(`Ink-Treader: ${mine.length + opp} cop${mine.length + opp === 1 ? "y" : "ies"} of ${short(it.name)}, ${mine.length} for your creatures and ${opp} for opponents' (${alive.map(i => board.n[i]).join(" + ")}).`, "win");
+  await copyMagecraft(mine.length + opp, it.name);
+}
+/* copying an instant or sorcery triggers magecraft (Storm-Kiln Artist, Archmage Emeritus) once per copy */
+async function copyMagecraft(k, name) {
+  const mc = [];
+  for (let i = 0; i < k; i++) mc.push(...magecraftItems());
+  await putTriggers(mc, `${k} cop${k === 1 ? "y" : "ies"} of ${short(name)}`);
 }
 /* opponents' creatures, which the page doesn't track: rolled once a turn (0 to 4 each, 1.65 on average)
    so every spell that turn sees the same boards */
