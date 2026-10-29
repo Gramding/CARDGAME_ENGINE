@@ -3016,7 +3016,6 @@ async function handMenu(name) {
   if (c.k === "land") btns.push(["Play land", "land", "primary"]);
   else btns.push(...payButtons(name));
   if (c.mdfc) btns.push(["Play as land", "mdfcland"]);
-  if (name === BIRGI) btns.push([`Cast ${HARNFEL} {4}{R}`, "harnfel"]);
   if (isSpell(name)) btns.push(["Cast repeatedly…", "repeat"]);
   if (name === "Step Through") btns.push(["Wizardcycle {2}", "cycle"]);
   if (name === "Otawara, Soaring City") btns.push(["Channel (bounce)", "channel"]);
@@ -3027,7 +3026,6 @@ async function handMenu(name) {
   const v = await openSheet(`${name}  ${c.c ? "· " + c.c : ""}`, null, btns);
   if (!v) return;
   if (v.startsWith("pay:")) return castWith(name, "hand", v.slice(4));
-  if (v === "harnfel") return cast(name, "hand", { cost: "4R", alt: "back face", back: true });
   if (v === "repeat") return castRepeatMenu(name);
   snapshotUndo();
   if (v === "land" || v === "mdfcland") {
@@ -3078,6 +3076,7 @@ function payButtons(name, tail = "") {
   if (pi && S.hand.filter(n => n !== name && cardColors(n).includes(pi.color || "U")).length >= pi.n) out.push([pi.label, "pay:pitch"]);
   if (name === "Snuff Out" && hasSwamp()) out.push(["Pay 4 life (you control a Swamp)", "pay:snuff"]);
   if (c.dash) out.push([`Dash {${c.dash}} (haste, back to hand at the end step)`, "pay:dash"]);
+  if (name === BIRGI) out.push([`Cast ${HARNFEL} {4}{R}${tail}`, "pay:harnfel"]);   // the back face, from any zone you may cast from
   if (name === "Fireblast" && S.bf.filter(p => landTypesP(p).includes("M")).length >= 2) out.push(["Sacrifice two Mountains", "pay:fireblast"]);
   if (name === "Flare of Duplication" && S.bf.some(redSac)) out.push(["Sacrifice a nontoken red creature", "pay:flare"]);
   return out;
@@ -3088,6 +3087,7 @@ async function castWith(name, zone, mode) {
   if (mode === "free") return cast(name, zone, { free: true, alt: "alt cost" });
   if (mode === "spectacle") return cast(name, zone, { cost: "R", alt: "spectacle" });
   if (mode === "dash") return cast(name, zone, { cost: C[name].dash, alt: "dash", dash: true });
+  if (mode === "harnfel") return cast(name, zone, { cost: "4R", alt: "back face", back: true });
   snapshotUndo();   // the life or the pitched cards and the cast undo as one step
   if (mode === "pitch") {
     const pi = pitchInfo(name), blues = S.hand.filter(n => n !== name && cardColors(n).includes(pi.color || "U"));
