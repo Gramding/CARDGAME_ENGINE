@@ -40,6 +40,7 @@ const ZADA = 'Zada, Hedron Grinder';
   // Involuntary Employment on an opponent's creature: a Treasure and a note to take it by hand
   await setup(['Involuntary Employment'], Array(4).fill('Mountain'));
   await go(() => cast('Involuntary Employment', 'hand')); await pick("An opponent's creature"); await press('Target it'); await resolve();
+  await press('Skip');   // not naming the creature leaves it to you
   check('A Treasure and the steal note', await state(() => S.treasures === 1 && S.turnLog.some(e => e.c === 'Involuntary Employment' && /opponent's creature until end of turn/.test(e.note))));
 
   // Flick a Coin aimed at Zada pings each of your creatures, with a Treasure and a card for each
@@ -57,13 +58,32 @@ const ZADA = 'Zada, Hedron Grinder';
   await T.resolveAll(); await T.p.waitForTimeout(150);
   check('Tokens of Zada and Beetleback Chief, whose ETB made two Goblins', await state(() => S.bf.filter(p => p.token && p.temp).length === 2 && S.bf.filter(p => p.name === 'Goblin Token').length === 2), await state(() => S.bf.map(p => p.name + (p.token ? '*' : '')).join()));
 
-  // Bond of Passion has a second target, so Zada doesn't copy it
+  // Bond of Passion always has a second target ("any other target"), so Zada never copies it, and the page says why
   await setup(['Bond of Passion'], [ZADA, ...gob(2), ...Array(6).fill('Mountain')]);
   await ev(() => { S.bf[0].tapped = true; });
   await go(() => cast('Bond of Passion', 'hand')); await press('Target it');
-  check('No Zada trigger for a spell with two targets', await state(() => !S.stack.some(x => x.eff === 'zada')));
-  await resolve(); await press('Target it');
-  check('Zada untapped and opponent 1 took 2', await state(() => !S.bf[0].tapped && S.opp[0].life === 38));
+  check('The 2 damage target is chosen as it is cast, and Zada is not offered for it', (await T.title()).startsWith('Bond of Passion: 2 damage to any other target') && await state(() => ![...document.querySelectorAll('#sheetBody .pick')].some(b => b.textContent.startsWith('Zada'))));
+  await press('Target it');
+  check('No Zada trigger, and a note says why', await state(() => !S.stack.some(x => x.eff === 'zada') && /Zada doesn't copy it/.test(document.getElementById('banner').textContent) && S.stack[0].target2.kind === 'opp'), await state(() => document.getElementById('banner').textContent));
+  await resolve();
+  check('Zada untapped and opponent 1 took 2, with no more questions', await state(() => !S.bf[0].tapped && S.opp[0].life === 38) && !(await T.sheet()).open);
+
+  // on an opponent's creature: it joins your side until end of turn
+  await setup(['Bond of Passion'], Array(6).fill('Mountain'));
+  await go(() => cast('Bond of Passion', 'hand')); await pick("An opponent's creature"); await press('Target it'); await press('Target it'); await resolve();
+  check('It asks which creature you take', (await T.title()).startsWith('Bond of Passion: gain control of which'));
+  await ev(() => { document.getElementById('ocName').value = 'krenko, mob boss'; }); await press('Take it');
+  check('Krenko is yours, untapped and hasty, and opponent 1 took 2', await state(() => { const k = S.bf.find(p => p.name === 'Krenko, Mob Boss'); return k && k.borrowed && !k.tapped && !sick(k) && S.opp[0].life === 38; }));
+  await go(() => bfMenu(S.bf.find(p => p.name === 'Krenko, Mob Boss').uid)); await press('{T}: a Goblin');
+  check('Its ability works for you', await state(() => S.bf.filter(p => p.name === 'Goblin Token').length === 1));
+  await ev(() => { nextTurn(); }); await T.p.waitForTimeout(200);
+  check('At end of turn it goes back, not to your graveyard', await state(() => !S.bf.some(p => p.name === 'Krenko, Mob Boss') && !S.gy.includes('Krenko, Mob Boss')));
+
+  // a copy keeps the original's damage target
+  await setup(['Bond of Passion', 'Flare of Duplication'], ['Goblin Token', ...Array(9).fill('Mountain')]);
+  await go(() => cast('Bond of Passion', 'hand')); await press('Target it'); await press('Target it');
+  await go(() => cast('Flare of Duplication', 'hand')); await T.resolveAll(); await T.p.waitForTimeout(150);
+  check('Flare copied it: 4 damage to opponent 1 and no extra target question', await state(() => S.opp[0].life === 36) && !(await T.sheet()).open, await state(() => S.opp[0].life));
 
   // Press into Service: support on the spell itself
   await setup(['Press into Service'], ['Goblin Token', 'Beetleback Chief', ...Array(5).fill('Mountain')]);
