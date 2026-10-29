@@ -10,14 +10,19 @@ function canLead(c: CardData): boolean {
   return /Legendary.*Creature/.test(type.split(" // ")[0]) || /can be your commander/.test(text);
 }
 
-export function guessCommander(deck: ParsedDeck, cards: Map<string, CardData>): string | null {
+/** Every card that could lead the deck: a single legendary creature whose identity covers the whole list. */
+export function commanderCandidates(deck: ParsedDeck, cards: Map<string, CardData>): string[] {
   const all = deck.cards.map(l => cards.get(l.name)).filter((c): c is CardData => !!c);
   const ident = new Set(all.flatMap(c => c.color_identity));
-  const fits = deck.cards.filter(l => {
+  return deck.cards.filter(l => {
     const c = cards.get(l.name);
     return c && l.qty === 1 && canLead(c) && [...ident].every(x => c.color_identity.includes(x));
-  });
-  return fits.length === 1 ? fits[0].name : null;
+  }).map(l => l.name);
+}
+
+export function guessCommander(deck: ParsedDeck, cards: Map<string, CardData>): string | null {
+  const fits = commanderCandidates(deck, cards);
+  return fits.length === 1 ? fits[0] : null;
 }
 
 /** Move the guessed commander out of the 99 into the command zone. */

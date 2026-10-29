@@ -73,6 +73,13 @@ chips show library and hand, and the hand counter in the top bar adjusts the tar
   Duplication, Fury's evoke and Ragavan's dash. Mana Geyser asks how many lands your opponents have
   tapped, since the page doesn't track their boards.
 
+Imported decks get the same rules help for their modeled cards. A mono-red Zada list is covered: Zada,
+Hedron Grinder copies a spell aimed only at it for each other creature you control, so the cantrips,
+pumps and threaten effects (Traitorous Greed adds RR per copy) multiply across your Goblins. Both
+Krenkos, the token spells, Mogg War Marshal's echo, Roaming Throne, the Lieutenants (with your commander
+out) and the Equipment work, Skullclamp included. When a pasted list has several legends that could lead
+it, the importer offers each one as a button.
+
 Build and open it locally:
 
 ```sh

@@ -2,7 +2,7 @@ import { deckNames, deckSize, parseDecklist, type ParsedDeck } from "../../src/i
 import { coverage, type Coverage, type Status } from "../../src/importer/coverage";
 import { buildPrompt } from "../../src/importer/prompt";
 import { imageOf, lookupCards, type CardData } from "../../src/importer/scryfall";
-import { applyCommander, guessCommander } from "../../src/importer/commander";
+import { applyCommander, commanderCandidates, guessCommander } from "../../src/importer/commander";
 import { playDeck, saveDeck } from "../../src/importer/deck";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -37,9 +37,11 @@ function render() {
   ].map(([cls, v, l]) => `<div class="stat ${cls}"><b>${esc(v)}</b><span>${l}</span></div>`).join("");
   const warns = [...deck.warnings];
   if (guessed) warns.push(`No commander was marked, so the guess is ${guessed.split(" // ")[0]}: the only legendary creature whose colors cover the whole deck. To pick another, put it first with a blank line after it.`);
-  if (!deck.commanders.length) warns.push("No commander found. Put it first with a blank line after it, or under a \"Commander\" heading.");
+  const picks = deck.commanders.length ? [] : commanderCandidates(deck, current.cards);
+  if (!deck.commanders.length) warns.push(picks.length ? `No commander was marked, and ${picks.length} legends could lead this deck. Pick one below.` : "No commander found. Put it first with a blank line after it, or under a \"Commander\" heading.");
   if (size !== 100) warns.push(`The list has ${size} cards; a Commander deck has 100.`);
-  $("warnings").innerHTML = warns.map(w => `<p class="warn">${esc(w)}</p>`).join("");
+  $("warnings").innerHTML = warns.map(w => `<p class="warn">${esc(w)}</p>`).join("") +
+    (picks.length ? `<div class="row picks">${picks.map(n => `<button class="btn" data-cmdr="${esc(n)}">${esc(n.split(" // ")[0])}</button>`).join("")}</div>` : "");
   $("gaps").innerHTML = cov.gaps.map(g => `<div class="gap"><b>Engine work first: ${esc(g.title)}</b><p>${esc(g.detail)}${g.cards.length ? ` Affects ${g.cards.length} modeled card${g.cards.length === 1 ? "" : "s"}: ${esc(g.cards.join(", "))}.` : ""}</p></div>`).join("");
   renderGrid();
   const manual = cov.counts.data + cov.counts.script;
@@ -71,6 +73,14 @@ async function check() {
 }
 
 $("check").addEventListener("click", check);
+$("warnings").addEventListener("click", ev => {   // a tie between possible commanders: the player picks one
+  const b = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-cmdr]");
+  if (!b || !current) return;
+  const deck = applyCommander(current.deck, b.dataset.cmdr!);
+  current = { ...current, deck, cov: coverage(deckNames(deck), current.cards), guessed: null };
+  setStatus(`${b.dataset.cmdr!.split(" // ")[0]} is the commander.`);
+  render();
+});
 $("play").addEventListener("click", () => {
   if (!current) return;
   if (!current.deck.commanders.length) { setStatus("Mark the commander first: put it first with a blank line after it.", true); return; }
