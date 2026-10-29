@@ -203,7 +203,7 @@ function targetLabel(t) {
   if (t.kind === "perm") { const p = S.bf.find(x => x.uid === t.uid); return p ? short(p.name) + (p.copyOf && p.copyOf !== p.name ? " as " + short(p.copyOf) : "") : t.label + " (gone)"; }
   return "an opponent's permanent";
 }
-async function chooseTarget(title, dmg, pre) {
+async function chooseTarget(title, dmg, pre, not) {   // not: a target this one must differ from ("any other target")
   const opts = [];
   S.opp.forEach((o, i) => { if (o.life > 0 && o.lib > 0) opts.push({ t: { kind: "opp", i }, label: `Opponent ${i + 1} · ${o.life} life` }); });
   for (const p of S.bf) {
@@ -211,6 +211,7 @@ async function chooseTarget(title, dmg, pre) {
     else if (isRalPW(p)) opts.push({ t: { kind: "perm", uid: p.uid, label: "Ral" }, label: `Ral, Leyline Prodigy · loyalty ${p.loyalty || 0}` });
   }
   opts.push({ t: { kind: "other" }, label: "An opponent's creature or planeswalker" });
+  if (not && not.kind === "perm") { const i = opts.findIndex(o => o.t.kind === "perm" && o.t.uid === not.uid); if (i >= 0) opts.splice(i, 1); }
   let picked = (pre && opts.find(o => JSON.stringify(o.t) === JSON.stringify(pre))) || opts.find(o => o.t.kind === "opp" && o.t.i === S.target) || opts[0];
   const wrap = document.createElement("div"); wrap.className = "picklist";
   opts.forEach(o => { const b = document.createElement("button"); b.className = "pick" + (o === picked ? " sel" : "") + (o.t.kind === "perm" ? " mine" : ""); b.textContent = o.label; b.onclick = () => { picked = o; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
@@ -1087,7 +1088,7 @@ async function castRepeat(name, n, mode = "mana") {
       casts++;
       let g = 0; while (S.stack.length > base && g++ < 800) await resolveItem(S.stack.pop());
     }
-  } finally { quiet = false; S.repeatTarget = null; S.cloneAuto = null; S.copyAuto = null; }
+  } finally { quiet = false; S.repeatTarget = null; S.repeatTarget2 = null; S.cloneAuto = null; S.copyAuto = null; }
   const d = deltaOf(before, metrics());
   log("repeat", { c: short(name), casts, stop, net: fmtDelta(d) });
   toast(`${short(name)} cast ${casts} time${casts === 1 ? "" : "s"} (${stop}). Net: ${fmtDelta(d)}.`, "win");
@@ -1137,8 +1138,12 @@ async function cast(name, zone, opts = {}) {
   if (add.life) { S.life -= add.life; paid.lifePaid += add.life; }
   if (add.sac) { leaveBf(add.sac, "die", "additional cost"); }
   if (c.burn) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseTarget(`${short(name)}: ${c.burn} damage to what?`, c.burn); if (quiet) S.repeatTarget = item.target; }
+  const target2 = async () => { if (name === "Bond of Passion") { item.target2 = quiet && S.repeatTarget2 ? S.repeatTarget2 : await chooseTarget("Bond of Passion: 2 damage to any other target", 2, null, item.target); if (quiet) S.repeatTarget2 = item.target2; } };
   if (name === "Siege Smash") item.mode = (await openSheet("Siege Smash (split second): choose one", null, [["Target creature gets +3/+2 and trample", "pump", "primary"], ["Destroy target artifact", "art"]])) || "pump";
   if ((c.tgt && item.mode !== "art") || (c.clone && (onBf(ZADA) || onBf(INK)))) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt || "creature"); if (quiet) S.repeatTarget = item.target; }   // Twinflame aimed on cast so Zada can copy it
+  await target2();   // Bond of Passion's second target, chosen as it's cast
+  const aimedAt = item.target && item.target.kind === "perm" && S.bf.find(q => q.uid === item.target.uid);
+  const why = c.multi && aimedAt && [ZADA, INK].includes(ident(aimedAt)) ? ` ${short(ident(aimedAt))} doesn't copy it: it also has another target, and ${short(ident(aimedAt))} only copies a spell that targets nothing else.` : "";
   if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.opp[S.target].hand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
   S.stack.push(item);
   const ev = { c: opts.back ? HARNFEL : short(name), full: name, from: zone, cost: free ? (opts.alt || "free") : (opts.cost ? opts.cost + " (" + opts.alt + ")" : c.c || "0"), tapped: paid.tapped };
@@ -1150,6 +1155,7 @@ async function cast(name, zone, opts = {}) {
   const trigs = castTriggerItems(name, item);
   const k = trigs.filter(t => t.eff === "krark").length;
   if (k) ev.krark = k;
+  if (why) ev.note = why.trim();
   log("cast", ev);
   if (S.unfailable === true && !quiet) { S.unfailable = "asked"; await unfailablePrompt(); if (S.phase === "over") return true; }
   if (below && !instantSpeed(name)) toast(`${short(name)} is sorcery speed. Fine if you have flash from Borne Upon a Wind or Emergence Zone.`, "warn");
@@ -1159,7 +1165,7 @@ async function cast(name, zone, opts = {}) {
   await settle();
   const top = S.stack[S.stack.length - 1];
   if (S.stack.length && !quiet) toast(k ? `${short(name)} is on the stack with ${k} Krark trigger${k === 1 ? "" : "s"} above it. Resolve them one at a time, or respond.`
-    : top.kind === "trigger" && TRIG[top.eff].wait ? `${stackLabel(top)}: the trigger is waiting. Respond now (Demonic Consultation, Tainted Pact) or resolve it.` : `${stackLabel(top)} is on the stack. Resolve it or respond.`);
+    : top.kind === "trigger" && TRIG[top.eff].wait ? `${stackLabel(top)}: the trigger is waiting. Respond now (Demonic Consultation, Tainted Pact) or resolve it.` : `${stackLabel(top)} is on the stack. Resolve it or respond.${why}`);
   render(); saveLocal();
   return true;
 }
@@ -1298,7 +1304,7 @@ async function resolveTrigger(it) {
     const orig = S.stack.find(x => x.id === it.spellId);
     if (win) {
       S.turnStats.flipsWon++; S.turnStats.copies++;
-      S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, mode: it.mode, target: (orig && orig.target) || it.target });
+      S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, mode: it.mode, target: (orig && orig.target) || it.target, target2: orig && orig.target2 });
       log("Krark flip", { c: short(it.name), flip: "W", result: "copy on the stack" });
       toast(`Krark: won. A copy of ${short(it.name)} is on the stack.`, "win");
       await putTriggers([...magecraftItems(), ...flipWonItems()], `won flip, copy of ${short(it.name)}`);
@@ -1430,7 +1436,7 @@ async function copyFromStack(source, abilities) {
     if (more && $("copySame") && $("copySame").checked) S.copyAuto = { ...(S.copyAuto || {}), [source]: { id: pick.id, kind: pick.kind, name: pick.name, eff: pick.eff } };
   }
   if (pick.kind === "trigger") S.stack.push({ ...pick, id: S.nextId++, copied: true });
-  else { S.stack.push({ id: S.nextId++, kind: "copy", name: pick.name, mode: pick.mode, target: pick.target }); S.turnStats.copies++; }
+  else { S.stack.push({ id: S.nextId++, kind: "copy", name: pick.name, mode: pick.mode, target: pick.target, target2: pick.target2 }); S.turnStats.copies++; }
   log("copy", { c: short(source), of: stackLabel(pick) });
   if (pick.kind !== "trigger") await putTriggers(magecraftItems(), `copy of ${short(pick.name)}`);
 }
@@ -2190,7 +2196,7 @@ async function chooseCreature(name, kind) {
   return picked.t;
 }
 /* name an opponent's permanent for a copy effect: any card the page knows, or a new one with its type */
-async function nameOppPermanent(source, kind) {
+async function nameOppPermanent(source, kind, verb = "copy", okLabel = "Make the token") {
   const known = Object.values(C).filter(c => !c.token && (kind !== "creature" || c.k === "creature")).map(c => c.n).sort();
   const box = document.createElement("div"); box.className = "form";
   const kinds = kind === "creature" ? ["creature"] : ["creature", "artifact", "enchantment", "land", "planeswalker"];
@@ -2200,7 +2206,7 @@ async function nameOppPermanent(source, kind) {
     <label for="ocKind">Type</label><select id="ocKind">${kinds.map(k => `<option>${k}</option>`).join("")}</select>
     <label for="ocPT">Power/toughness</label><input id="ocPT" value="2/2" inputmode="numeric">`;
   pendingArt = source;
-  const v = await openSheet(`${short(source)}: copy which of your opponent's ${kind === "creature" ? "creatures" : "permanents"}?`, box, [["Make the token", "go", "primary"], ["Skip", null]]);
+  const v = await openSheet(`${short(source)}: ${verb} which of your opponent's ${kind === "creature" ? "creatures" : "permanents"}?`, box, [[okLabel, "go", "primary"], ["Skip", null]]);
   const n = v === "go" && $("ocName").value.trim();
   if (!n) return null;
   const hit = known.find(x => x.toLowerCase() === n.toLowerCase());
@@ -2209,6 +2215,16 @@ async function nameOppPermanent(source, kind) {
   const card = { n, s: n, k, c: "", manual: 1, ...(k === "creature" ? { pt } : {}) };
   C[n] = card; S.extraCards = { ...(S.extraCards || {}), [n]: card };   // kept with the game so undo and reloads know it
   return n;
+}
+/* gain control of an opponent's permanent until end of turn: it sits on your side untapped with haste, then goes back
+   (temp), and it never goes to your graveyard (oppCard). Taking control isn't entering, so no ETB. */
+async function borrow(source, name, kind) {
+  const n = name || await nameOppPermanent(source, kind, "gain control of", "Take it");
+  if (!n) return null;
+  const b = { uid: S.nextId++, name: n, tapped: false, etbTurn: S.turn, hasteTurn: S.turn, temp: true, oppCard: true, borrowed: true };
+  S.bf.push(b);
+  log("control", { c: short(n), from: "an opponent", until: "end of turn", by: short(source) });
+  return b;
 }
 function tokenCopy(p, extra = {}) {
   const t = { uid: S.nextId++, name: ident(p), copyOf: ident(p), token: true, tapped: false, etbTurn: S.turn, ...extra };
@@ -2224,7 +2240,8 @@ async function targetFx(name, it) {
     return;
   }
   const p = t.kind === "perm" ? S.bf.find(q => q.uid === t.uid) : null;
-  if (t.kind === "perm" && !p) { log("fizzle", { c: short(name), note: `${t.label} is gone` }); return; }
+  const bond = async () => { if (fx.bond) dealDamage(it.target2 || await chooseTarget("Bond of Passion: 2 damage to any other target", 2, null, t), 2, name); };
+  if (t.kind === "perm" && !p) { log("fizzle", { c: short(name), note: `${t.label} is gone` }); await bond(); return; }   // the other target still takes its damage
   const ev = { c: short(name), target: p ? permLabel(p) : "an opponent's creature" };
   if (p) {
     if (fx.untap) p.tapped = false;
@@ -2250,7 +2267,10 @@ async function targetFx(name, it) {
     } else ev.note = "copied an opponent's permanent by hand";
   }
   if (fx.note) ev.gains = fx.note;
-  if (fx.steal && !p) ev.note = "you control an opponent's creature until end of turn: play it by hand";
+  if (fx.steal && !p) {   // their creature joins your side, untapped and hasty, until end of turn
+    const b = await borrow(name, t.ink ? OPP_CREATURE : null, "creature");
+    ev.note = b ? `you control ${short(b.name)} until end of turn` : "you control an opponent's creature until end of turn: play it by hand";
+  }
   if (fx.exile) { const x = S.lib.shift(); if (x) { S.ex.push({ n: x, play: true, until: fx.exile === "next" ? S.turn + 1 : S.turn }); ev.exiled = short(x); } }
   if (fx.spark) await sparkOf(name, p, ev);
   if (fx.mana) {   // one colour for every copy of the same spell on this stack
@@ -2264,7 +2284,7 @@ async function targetFx(name, it) {
   if (fx.draw) draw(fx.draw, short(name));
   if (fx.fists && p && S.bf.includes(p)) { p.ppump = { turn: S.turn, n: ppumpOf(p) + S.turnStats.draws }; log("effect", { c: short(name), power: `+${S.turnStats.draws}/+0 (cards drawn this turn)` }); }
   if (fx.scry) await scry(name);
-  if (fx.bond) { const t2 = await chooseTarget("Bond of Passion: 2 damage to any other target", 2); dealDamage(t2, 2, name); }
+  await bond();
   if (fx.support && it.kind === "spell") {   // support 2 on the spell itself, not its copies
     const mine = S.bf.filter(q => isCreatureP(q) && q !== p);
     const idx = mine.length ? await multiPick("Press into Service: support 2. A +1/+1 counter on up to two other creatures", mine.map(q => q.name), 2, [], false, name, "Put the counters") : null;
@@ -2592,7 +2612,8 @@ async function conscriptsEtb(it) {
   const kiki = q => ident(q) === KIKI && !backUp(q);
   const perms = [...S.bf].sort((a, b) => kiki(b) - kiki(a) || (ident(b) === FABLE && backUp(b)) - (ident(a) === FABLE && backUp(a)));
   const t = await pickPerm("Zealous Conscripts: gain control of which permanent until end of turn? Untap it, it gains haste", perms, "Untap mine", "An opponent's permanent", CONSCRIPTS);
-  if (!t || t === "opp") { log("Zealous Conscripts", { note: t ? "you control an opponent's permanent until end of turn: play it by hand" : "no target" }); return; }
+  if (t === "opp") { const b = await borrow(CONSCRIPTS, null, "permanent"); if (!b) log("Zealous Conscripts", { note: "you control an opponent's permanent until end of turn: play it by hand" }); return; }
+  if (!t) { log("Zealous Conscripts", { note: "no target" }); return; }
   t.tapped = false; t.hasteTurn = S.turn;
   log("Zealous Conscripts", { untapped: permLabel(t), haste: true });
   if (src && src.token && kiki(t)) S.pendingWin = { key: "kiki", method: "Kiki-Jiki + Zealous Conscripts",
@@ -3825,7 +3846,7 @@ function render() {
     const id = ident(p), pic = hasArt(id), copy = p.copyOf && p.copyOf !== p.name;
     const tags = [isRalPW(p) ? "loyalty " + (p.loyalty ?? 0) : "", dmgOf(p) ? `${dmgOf(p)} dmg` : "", pumpOf(p) && isCreatureP(p) ? `${power(p)}/${toughness(p)}` : "", p.token ? "token" : "", p.staff ? "✦staff" : "", p.counters ? "+" + p.counters : "", pic && copy ? (p.name === SAKA ? "Sakashima" : "copy") : "",
       p.lore && !backUp(p) ? "lore " + p.lore : "", p.keyType ? "−1 " + p.keyType : "", p.named ? "names " + short(p.named) : "", p.dash ? "dashed" : "", mooned(p) ? "Mountain" : "",
-      (C[id] || {}).equip && S.bf.some(q => q.uid === p.on) ? "on " + short(ident(S.bf.find(q => q.uid === p.on))) : "", id === THRONE && p.ctype ? p.ctype : "", p.echoDue ? "echo" : ""].filter(Boolean).join(" ");
+      (C[id] || {}).equip && S.bf.some(q => q.uid === p.on) ? "on " + short(ident(S.bf.find(q => q.uid === p.on))) : "", id === THRONE && p.ctype ? p.ctype : "", p.echoDue ? "echo" : "", p.borrowed ? "theirs" : ""].filter(Boolean).join(" ");
     return `<button class="card ${kindClass(id)} ${p.tapped ? "tapped" : ""} ${p.token ? "token" : ""} ${pic ? "pic" : ""}" data-uid="${p.uid}" aria-label="${esc(short(p.name) + (copy ? " as " + short(p.copyOf) : "") + (p.tapped ? ", tapped" : ""))}">${artTag(id, p.flipped)}<span class="cn">${esc(short(p.name))}${copy ? " → " + esc(short(p.copyOf)) : ""}</span><span class="cc">${esc(tags)}</span></button>`;
   };
   $("lands").innerHTML = lands.map(bfChip).join("") || `<p class="empty">No lands.</p>`;
