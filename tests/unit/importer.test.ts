@@ -5,7 +5,7 @@ import { deckNames, deckSize, parseDecklist } from "../../src/importer/parse";
 import { coverage, isDataOnly } from "../../src/importer/coverage";
 import { buildPrompt } from "../../src/importer/prompt";
 import { lookupCards, trimCard, type CardData } from "../../src/importer/scryfall";
-import { applyCommander, guessCommander } from "../../src/importer/commander";
+import { applyCommander, commanderCandidates, guessCommander } from "../../src/importer/commander";
 import { playDeck, shortCost, stubCard } from "../../src/importer/deck";
 
 const fixture = (f: string) => readFileSync(resolve(__dirname, "../fixtures", f), "utf8");
@@ -126,6 +126,7 @@ describe("commander guess", () => {
     const k = byName("Kefka, Court Mage // Kefka, Ruler of Ruin");
     const cards = new Map([["Kefka, Court Mage // Kefka, Ruler of Ruin", k], ["Kefka Clone", { ...k, name: "Kefka Clone" }], ["Sol Ring", byName("Sol Ring")]]);
     expect(guessCommander(d, cards)).toBeNull();
+    expect(commanderCandidates(d, cards)).toEqual(["Kefka, Court Mage // Kefka, Ruler of Ruin", "Kefka Clone"]);
   });
 });
 

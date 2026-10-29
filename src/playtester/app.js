@@ -38,6 +38,15 @@ const GOBLIN = "Goblin Token", SHAMAN_TOKEN = "Goblin Shaman Token", CONSTRUCT =
 C[GOBLIN] = { n: GOBLIN, s: "Goblin", k: "creature", c: "R", pt: [1, 1], ty: ["Goblin"], token: 1 };
 C[SHAMAN_TOKEN] = { n: SHAMAN_TOKEN, s: "Goblin Shaman", k: "creature", c: "R", pt: [2, 2], ty: ["Goblin", "Shaman"], token: 1 };   // makes a Treasure when it attacks
 C[CONSTRUCT] = { n: CONSTRUCT, s: "Construct", k: "creature", kt: ["artifact", "creature"], c: "", pt: [0, 0], ty: ["Construct"], token: 1 };   // +1/+1 per artifact you control
+const ZADA = "Zada, Hedron Grinder", THRONE = "Roaming Throne", KRENKO = "Krenko, Mob Boss", KINGPIN = "Krenko, Tin Street Kingpin", PYRO = "Young Pyromancer";
+const ELEMENTAL = "Elemental Token", DINO = "Dinosaur Token", DWARF = "Dwarf Token", DRAGON = "Dragon Token", THOPTER = "Thopter Token", DETECTIVE = "Detective Token", HORROR = "Eldrazi Horror Token";
+C[ELEMENTAL] = { n: ELEMENTAL, s: "Elemental", k: "creature", c: "UR", pt: [1, 1], ty: ["Elemental"], token: 1 };
+C[DINO] = { n: DINO, s: "Dinosaur", k: "creature", c: "R", pt: [1, 1], ty: ["Dinosaur"], haste: 1, token: 1 };
+C[DWARF] = { n: DWARF, s: "Dwarf", k: "creature", c: "R", pt: [1, 1], ty: ["Dwarf"], token: 1 };
+C[DRAGON] = { n: DRAGON, s: "Dragon", k: "creature", c: "R", pt: [5, 5], ty: ["Dragon"], flying: 1, token: 1 };
+C[THOPTER] = { n: THOPTER, s: "Thopter", k: "creature", kt: ["artifact", "creature"], c: "", pt: [1, 1], ty: ["Thopter"], flying: 1, token: 1 };
+C[DETECTIVE] = { n: DETECTIVE, s: "Detective", k: "creature", c: "WU", pt: [2, 2], ty: ["Detective"], token: 1 };
+C[HORROR] = { n: HORROR, s: "Eldrazi Horror", k: "creature", c: "", pt: [3, 2], ty: ["Eldrazi", "Horror"], token: 1 };
 const CHAPTERS = {
   [URZA_SAGA]: ["it gains {T}: Add {C}", "it gains {2}, {T}: create a Construct", "put an artifact with mana cost {0} or {1} onto the battlefield"],
   [FABLE]: ["create a 2/2 Goblin Shaman", "discard up to two cards, then draw that many", "transform into Reflection of Kiki-Jiki"],
@@ -141,22 +150,37 @@ function bonusOf(p) {
   if (ident(p) === CONSTRUCT) b += artifactCount();   // Urza's Saga's Constructs
   return b;
 }
-function toughness(p) { const b = basePT(p); return b ? b[1] + (p.counters || 0) + pumpOf(p) + bonusOf(p) : 1; }
+function toughness(p) { const b = basePT(p); return b ? b[1] + (p.counters || 0) + pumpOf(p) + bonusOf(p) + eqBonus(p, 1) : 1; }
 function power(p) {
   const b = basePT(p); if (!b) return 0;
   const kiln = ident(p) === KILN && !p.frog ? S.bf.filter(isArtifactP).length + S.treasures : 0;   // Storm-Kiln Artist: +1/+0 per artifact
-  return b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) + bonusOf(p) + kiln;
+  return b[0] + (p.counters || 0) + pumpOf(p) + ppumpOf(p) + bonusOf(p) + kiln + eqBonus(p, 0);
 }
+/* Equipment: q.on is the creature it's attached to (Skullclamp, Champion's Helm, Mirror Shield, Swiftfoot Boots) */
+function equipOn(p) { return S.bf.filter(q => q.on === p.uid && (C[ident(q)] || {}).equip); }
+function eqBonus(p, i) { return equipOn(p).reduce((a, q) => a + ((C[ident(q)].eq || [0, 0])[i]), 0); }
+/* state-based deaths after a toughness change (Skullclamp on a 1/1) */
+function checkDeaths() { for (const p of S.bf.filter(q => isCreatureP(q) && toughness(q) <= 0)) leaveBf(p, "die", "0 toughness"); }
 function dmgOf(p) { return p.dmg && p.dmg.turn === S.turn ? p.dmg.n : 0; }
 /* a permanent leaves the battlefield: commanders that die or get exiled go to the command zone */
 function leaveBf(p, to, why) {
   if (!S.bf.includes(p)) return;
+  if (to === "die" && p.exileTurn === S.turn) to = "exile";   // Spikefield Hazard's damage
   S.bf = S.bf.filter(x => x !== p);
   if (to === "die" && !p.token && p.name === VITALITY && isCreatureP(p)) {   // it comes back as a plain enchantment
     S.bf.push({ uid: S.nextId++, name: p.name, tapped: false, etbTurn: S.turn, notCreature: true });
     log("dies", { c: short(p.name), why, note: "returned as an enchantment" }); bounceCleanup(p); return;
   }
   if (to === "die" && ident(p) === STAR) { const t = trig("star", { src: p.uid }); if (!S.stack.length && !holdPriority) t.auto = true; S.stack.push(t); }   // Chromatic Star draws as it goes to the graveyard
+  if (to === "die") {   // dies triggers: Skullclamp, Mogg War Marshal, Felonious Rage and Otherworldly Outburst
+    const items = [];
+    for (const q of S.bf) if (q.on === p.uid && ident(q) === "Skullclamp") items.push(trig("clamp", { src: q.uid }));
+    const dt = (C[ident(p)] || {}).dieTokens;
+    if (dt && !p.frog && isCreatureP(p)) for (let i = 0, m = mult(p, false); i < m; i++) items.push(trig("tokens", { name: ident(p), tokens: dt }));
+    for (const d of p.dieFx || []) if (d.turn === S.turn) items.push(trig("tokens", { name: d.from, tokens: [[d.token, 1]] }));
+    if (items.length === 1 && !S.stack.length && !holdPriority) items[0].auto = true;
+    S.stack.push(...items);
+  }
   if (!p.token && !p.oppCard) {
     if (COMMANDERS.includes(p.name) && to !== "hand") S.cmdZone.push(p.name);
     else if (to === "hand") S.hand.push(p.name); else if (to === "exile") S.ex.push({ n: p.name }); else toGy(p.name);
@@ -167,6 +191,7 @@ function leaveBf(p, to, why) {
 function damagePerm(p, n, src) {
   if (isRalPW(p)) { p.loyalty = Math.max(0, (p.loyalty || 0) - n); log("damage", { c: "Ral", from: short(src), amount: n, loyalty: p.loyalty }); if (!p.loyalty) leaveBf(p, "die", "no loyalty"); return; }
   p.dmg = { turn: S.turn, n: dmgOf(p) + n };
+  if (/^Spikefield Hazard/.test(src || "")) p.exileTurn = S.turn;   // it's exiled instead if it would die this turn
   const t = toughness(p), dead = dmgOf(p) >= t;
   log("damage", { c: short(p.name) + (p.copyOf && p.copyOf !== p.name ? " as " + short(p.copyOf) : ""), from: short(src), amount: n, marked: dmgOf(p), toughness: t, dies: dead || undefined });
   if (dead) { leaveBf(p, "die", "lethal damage"); toast(`${short(p.name)} took lethal damage and died.`, "warn"); }
@@ -205,7 +230,7 @@ function isCreatureP(p) {
   if (backUp(p)) return !!(c.back && c.back.k === "creature");   // Kefka's and Fable's back faces are creatures, Ral's isn't
   return c.k === "creature";
 }
-function typesOf(p) { const c = C[ident(p)] || {}; return (backUp(p) && c.back ? c.back.ty : c.ty) || []; }
+function typesOf(p) { const c = C[ident(p)] || {}, ty = (backUp(p) && c.back ? c.back.ty : c.ty) || []; return ident(p) === THRONE && p.ctype ? [...ty, p.ctype] : ty; }
 function cardTypes(n) { const c = C[n] || {}; return c.kt || (c.k ? [c.k] : []); }
 function sakaOut() { return S.bf.some(p => p.name === SAKA); }
 function commanderOut() { return S.bf.some(p => COMMANDERS.includes(p.name)); }
@@ -215,6 +240,7 @@ function mult(p, castCaused) {
   const ty = typesOf(p);
   if (ty.includes("Wizard") || ty.includes("Shaman")) m += countBf(PRODIGY) - (ident(p) === PRODIGY ? 1 : 0);
   if (p.staff) m += 1;
+  if (isCreatureP(p)) m += S.bf.filter(q => q !== p && ident(q) === THRONE && q.ctype && !q.frog && ty.includes(q.ctype)).length;   // Roaming Throne
   return m;
 }
 function krarkPerms() { let ks = S.bf.filter(p => ident(p) === KRARK); if (ks.length > 1 && !sakaOut()) ks = ks.slice(0, 1); return ks; }
@@ -306,7 +332,7 @@ function restrictedOk(r, ctx) {
   return r.kind === "type" ? k.k === "creature" && (k.ty || []).includes(r.type) : !!k.leg;
 }
 /* creatures can't use {T} abilities the turn they arrive, unless something gave them haste */
-function hasHaste(p) { return p.hasteTurn === S.turn || (!!(C[ident(p)] || {}).haste && !backUp(p)); }
+function hasHaste(p) { return p.hasteTurn === S.turn || (!!(C[ident(p)] || {}).haste && !backUp(p)) || equipOn(p).some(q => C[ident(q)].eqHaste); }
 function sick(p) { return isCreatureP(p) && p.etbTurn === S.turn && !hasHaste(p); }
 function isManaSource(p, ctx) {
   if (p.tapped || !sourceColors(p, ctx)) return false;
@@ -373,6 +399,10 @@ function bestFetchTarget(f, color) {
 function enterLand(name, opts = {}) {
   const c = C[name] || {}, p = { uid: S.nextId++, name, tapped: !!c.etb_tapped || (!!c.town && S.turn > 3), etbTurn: S.turn };   // Starting Town: untapped on turns 1 to 3
   if (c.shock) { if (opts.shock === false) p.tapped = true; else { S.life -= 2; p.paidLife = 2; } }
+  if (name === "Dwarven Mine") {   // tapped unless you control three other Mountains; untapped, it makes a Dwarf
+    p.tapped = S.bf.filter(q => landTypesP(q).includes("M")).length < 3;
+    if (!p.tapped) { S.bf.push({ uid: S.nextId++, name: DWARF, token: true, tapped: false, etbTurn: S.turn }); log("token", { of: "1/1 Dwarf", by: "Dwarven Mine" }); }
+  }
   S.bf.push(p);
   if (c.saga && !mooned(p)) { p.lore = 1; const t = trig("chapter", { src: p.uid, ch: 1, name }); if (!S.stack.length && !holdPriority) t.auto = true; S.stack.push(t); }   // Urza's Saga: chapter I
   return p;
@@ -520,6 +550,12 @@ function startTurn(opponents) {
   const vaults = S.bf.filter(p => ident(p) === "Mana Vault" && p.tapped);
   if (vaults.length) { S.life -= vaults.length; log("Mana Vault", { life: -vaults.length, note: "tapped at draw step" }); }
   for (const p of S.bf) if (ident(p) === REMORA) S.stack.push(trig("remora", { src: p.uid }));   // cumulative upkeep
+  const lands = S.bf.filter(q => (C[ident(q)] || {}).k === "land" || q.asLand).length;
+  for (const p of S.bf) {
+    if (p.frog) continue;
+    if (ident(p) === "Dragonmaster Outcast" && lands >= 6) for (let i = 0, m = mult(p, false); i < m; i++) S.stack.push(trig("outcast", { src: p.uid }));
+    if (p.echoDue) S.stack.push(trig("echo", { src: p.uid, name: ident(p) }));   // Mogg War Marshal
+  }
   if (S.tTreasures) { S.treasures += S.tTreasures; S.tTreasures = 0; }   // tapped Treasures untap
   const due = (S.delayed || []).filter(d => d.turn <= S.turn);   // Mishra's and Urza's Bauble: a card at the next upkeep
   if (due.length) { S.delayed = S.delayed.filter(d => d.turn > S.turn); for (const d of due) draw(d.n, d.from); S.firstDraw = null; }
@@ -573,6 +609,7 @@ function endTurn() {
 /* cleanup step: discard down to the maximum hand size of seven */
 const MAX_HAND = 7;
 async function cleanupDiscard() {
+  if (onBf("Thought Vessel")) return true;   // no maximum hand size
   const k = S.hand.length - MAX_HAND;
   if (k <= 0) return true;
   const idx = await multiPick(`End of turn: discard ${k} down to ${MAX_HAND} cards`, S.hand, k, [], true, null, "Discard them");
@@ -779,11 +816,24 @@ const TRIG = {
   abPing:     { nm: "Ballista", src: BALLISTA, rank: 6, label: it => `Walking Ballista: 1 damage to ${targetLabel(it.target)}` },
   abBallista: { nm: "Ballista", src: BALLISTA, rank: 6, label: () => "Walking Ballista: put a +1/+1 counter on it" },
   abDraw:     { nm: "Draw", rank: 6, label: it => `${short(it.name)}: draw a card` },
+  zada:       { nm: "Zada", src: ZADA, rank: 7, label: it => `Zada: copy ${short(it.name)} for each other creature you control` },
+  pyro:       { nm: "Pyromancer", src: PYRO, rank: 1, label: () => "Young Pyromancer: create a 1/1 Elemental" },
+  etbtok:     { nm: "Tokens", rank: 2, label: it => `${short(it.name)}: create ${tokenWords((C[it.name] || {}).etbTokens || [])}` },
+  tokens:     { nm: "Tokens", rank: 2, label: it => `${short(it.name)}: create ${tokenWords(it.tokens)}` },
+  clamp:      { nm: "Skullclamp", src: "Skullclamp", rank: 2, label: () => "Skullclamp: draw two cards" },
+  outcast:    { nm: "Outcast", src: "Dragonmaster Outcast", rank: 2, label: () => "Dragonmaster Outcast: create a 5/5 flying Dragon (six or more lands)" },
+  echo:       { nm: "Echo", rank: 3, label: it => `${short(it.name)}: pay its echo {${(C[it.name] || {}).echo}} or sacrifice it` },
+  lieutenant: { nm: "Lieutenant", rank: 2, label: it => it.name === "Loyal Apprentice" ? "Loyal Apprentice: a 1/1 flying Thopter with haste" : "Siege-Gang Lieutenant: two 1/1 Goblins with haste" },
+  kingpin:    { nm: "Kingpin", src: KINGPIN, rank: 2, label: () => "Krenko, Tin Street Kingpin attacks: a +1/+1 counter, then a Goblin for each point of its power" },
+  abKrenko:   { nm: "Krenko", src: KRENKO, rank: 6, label: () => "Krenko, Mob Boss: a Goblin for each Goblin you control" },
+  abSiege:    { nm: "Siege-Gang", src: "Siege-Gang Lieutenant", rank: 6, label: it => `Siege-Gang Lieutenant: 1 damage to ${targetLabel(it.target)}` },
+  abEquip:    { nm: "Equip", rank: 6, label: it => `${short(it.name)}: attach to ${it.label}` },
   storm:      { nm: "Storm", rank: 8, label: it => `Storm: ${it.count} cop${it.count === 1 ? "y" : "ies"} of ${short(it.name)}` },
   krark:      { nm: "Krark", src: KRARK, rank: 9, label: it => `Krark: flip for ${short(it.name)}` },
 };
 const ETB_TRIG = { [MONK]: "monk", [DUAL]: "dualcaster", [RECRUITER]: "recruiter", [KEFKA]: "kefka", [ORACLE]: "oracle", [SNAPCASTER]: "snap", [DRAKE]: "drake", [SUBTLETY]: "subtlety",
-  "Spellseeker": "seeker", "Nephilim Epochal": "epochal", "Tataru Taru": "tataru", [QSTACK]: "q", "Fury": "fury", [CONSCRIPTS]: "conscripts" };
+  "Spellseeker": "seeker", "Nephilim Epochal": "epochal", "Tataru Taru": "tataru", [QSTACK]: "q", "Fury": "fury", [CONSCRIPTS]: "conscripts",
+  "Beetleback Chief": "etbtok", "Goblin Instigator": "etbtok", "Mogg War Marshal": "etbtok" };
 /* the ETB trigger a permanent has: Kefka's back face has none, and a Frog from Amphibian Downpour has no abilities */
 function etbEff(p) { if (p.frog || (ident(p) === KEFKA && backUp(p))) return null; return ETB_TRIG[ident(p)] || null; }
 let holdPriority = true, askOrder = true, quiet = false, autoOne = true;   // hold priority: nothing resolves until you say so
@@ -821,12 +871,13 @@ function castTriggerItems(name, item) {
   for (const p of S.bf) {
     if (p.frog) continue;
     const id = ident(p), m = mult(p, isIS);
-    const add = eff => { for (let i = 0; i < m; i++) out.push(trig(eff, { src: p.uid })); };
+    const add = (eff, extra) => { for (let i = 0; i < m; i++) out.push(trig(eff, { src: p.uid, ...extra })); };
     if (id === KITTEN && noncreature) add("kitten");
     if (id === "Lotho, Corrupt Shirriff" && S.turnStats.casts === 2) add("lotho");   // your second spell this turn
     if (id === AETHER) add("aether");
     if (id === STEAMKIN && cardColors(name).includes("R") && (p.counters || 0) < 3) add("steamkin");
-    if (id === INK && isIS && item.target && item.target.kind === "perm" && item.target.uid === p.uid) out.push(trig("ink", { src: p.uid, name, spellId: item.id }));
+    if ((id === INK || id === ZADA) && isIS && !c.multi && item.target && item.target.kind === "perm" && item.target.uid === p.uid) add(id === ZADA ? "zada" : "ink", { name, spellId: item.id });   // a spell that targets only it
+    if (id === PYRO && isIS) add("pyro");
     if (id === BIRGI && !p.flipped) add("birgi");
     else if (id === ELECTRO && isIS) add("electro");
     else if (id === VIVI && noncreature) add("vivi");
@@ -1086,7 +1137,8 @@ async function cast(name, zone, opts = {}) {
   if (add.life) { S.life -= add.life; paid.lifePaid += add.life; }
   if (add.sac) { leaveBf(add.sac, "die", "additional cost"); }
   if (c.burn) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseTarget(`${short(name)}: ${c.burn} damage to what?`, c.burn); if (quiet) S.repeatTarget = item.target; }
-  if (c.tgt) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt); if (quiet) S.repeatTarget = item.target; }
+  if (name === "Siege Smash") item.mode = (await openSheet("Siege Smash (split second): choose one", null, [["Target creature gets +3/+2 and trample", "pump", "primary"], ["Destroy target artifact", "art"]])) || "pump";
+  if ((c.tgt && item.mode !== "art") || (c.clone && (onBf(ZADA) || onBf(INK)))) { item.target = quiet && S.repeatTarget ? S.repeatTarget : await chooseCreature(name, c.tgt || "creature"); if (quiet) S.repeatTarget = item.target; }   // Twinflame aimed on cast so Zada can copy it
   if (c.jeska) item.mode = commanderOut() ? "both" : ((await openSheet("Jeska's Will without a commander out: choose one mode", null, [[`Add R for each card in the opponent's hand (${S.opp[S.target].hand})`, "mana", "primary"], ["Exile the top three, play them this turn", "exile"]])) || "mana");
   S.stack.push(item);
   const ev = { c: opts.back ? HARNFEL : short(name), full: name, from: zone, cost: free ? (opts.alt || "free") : (opts.cost ? opts.cost + " (" + opts.alt + ")" : c.c || "0"), tapped: paid.tapped };
@@ -1170,7 +1222,8 @@ async function enterBf(name, extra = {}) {
   await etb(p);
   const eff = etbEff(p);
   if (eff === "dualcaster") noteDualcasterLoop();
-  const items = eff && S.bf.includes(p) ? Array.from({ length: mult(p, false) }, () => trig(eff, { src: p.uid })) : [];
+  if ((C[name] || {}).echo) p.echoDue = true;   // echo is paid at your next upkeep
+  const items = eff && S.bf.includes(p) ? Array.from({ length: mult(p, false) }, () => trig(eff, eff === "etbtok" ? { src: p.uid, name } : { src: p.uid })) : [];
   if (p.evoked && S.bf.includes(p)) items.push(trig("evoke", { src: p.uid, name }));
   if ((C[name] || {}).saga && !p.flipped && S.bf.includes(p) && !mooned(p)) { p.lore = 1; items.push(trig("chapter", { src: p.uid, ch: 1, name })); }
   if (items.length) {
@@ -1474,7 +1527,16 @@ async function etb(p) {   // things that happen as it enters; ETB triggers go on
     land.sprawl = col; p.on = land.uid;
     log("Utopia Sprawl", { on: short(land.name), colour: col });
   }
-  else if (id === "Cloud Key") {
+  else if (id === THRONE) {
+    const types = [...new Set(DECK.cards.concat(COMMANDERS).flatMap(n => (C[n] || {}).k === "creature" ? (C[n].ty || []) : []))].sort();
+    const wrap = document.createElement("div"); wrap.className = "form";
+    const pre = types.includes("Goblin") ? "Goblin" : types[0];
+    wrap.innerHTML = `<label for="rtT">Creature type</label><select id="rtT">${types.map(t => `<option ${t === pre ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+    pendingArt = id;
+    await openSheet("Roaming Throne: choose a creature type. Triggered abilities of your other creatures of that type trigger twice", wrap, [["Choose it", "go", "primary"]]);
+    p.ctype = ($("rtT") && $("rtT").value) || pre;
+    log("Roaming Throne", { type: p.ctype });
+  } else if (id === "Cloud Key") {
     pendingArt = id;
     p.keyType = await openSheet("Cloud Key: spells of which type cost {1} less?", null, [["Artifact", "artifact", "primary"], ["Creature", "creature"], ["Enchantment", "enchantment"], ["Instant", "instant"], ["Sorcery", "sorcery"]]) || "artifact";
     log("Cloud Key", { type: p.keyType });
@@ -1595,7 +1657,7 @@ async function tokenEtb(tokens, target, source) {
   if (eff === "dualcaster") noteDualcasterLoop();
   if (eff === "monk" && CLONE_SPELLS.includes(source)) noteMonkLoop(source);
   const items = [];
-  for (const tok of tokens) for (let i = 0, m = mult(tok, false); i < m; i++) items.push(trig(eff, { src: tok.uid }));
+  for (const tok of tokens) for (let i = 0, m = mult(tok, false); i < m; i++) items.push(trig(eff, eff === "etbtok" ? { src: tok.uid, name: target } : { src: tok.uid }));
   await putTriggers(items, `${tokens.length > 1 ? tokens.length + " " : ""}${short(target)} token${tokens.length > 1 ? "s" : ""} entered`);
 }
 async function resolveEffects(name, n, opts) {
@@ -1631,7 +1693,9 @@ async function resolveEffects(name, n, opts) {
   if (c.look) for (let i = 0; i < n; i++) await lookAt(c.look, name);
   if (c.tutor && name !== "Beseech the Mirror") for (let i = 0; i < n; i++) await tutor(name);
   if (c.clone) {
-    const target = await chooseCloneTarget(name, n);
+    const aimed = opts.target && opts.target.kind === "perm" ? S.bf.find(q => q.uid === opts.target.uid) : null;
+    if (opts.target && opts.target.kind === "perm" && !aimed) { log("fizzle", { c: short(name), note: `${opts.target.label} is gone` }); return; }
+    const target = aimed ? ident(aimed) : await chooseCloneTarget(name, n);
     if (target) {
       const have = S.bf.filter(p => ident(p) === target).length, make = Math.max(0, Math.min(n, KRARK_CAP - have));
       const made = [];
@@ -1645,6 +1709,12 @@ async function resolveEffects(name, n, opts) {
   if (KEFKA_SPELLS.includes(name)) for (let i = 0; i < n; i++) await kefkaSpell(name, opts || {});
   if (TFX[name]) for (let i = 0; i < n; i++) await targetFx(name, opts || {});
   if (NEPH_SPELLS.includes(name)) for (let i = 0; i < n; i++) await nephSpell(name, opts || {});
+  if (c.tokens) for (let i = 0; i < n; i++) makeTokens(c.tokens, name);
+  if (c.humanHaste) for (const q of S.bf) if (isCreatureP(q) && typesOf(q).includes("Human")) q.hasteTurn = S.turn;   // Rally at the Hornburg
+  if (c.manaPer) {   // Battle Hymn: creatures you control; Brightstone Ritual: Goblins (yours; opponents' by the pool buttons)
+    const k = S.bf.filter(q => isCreatureP(q) && (c.manaPer !== "goblin" || typesOf(q).includes("Goblin"))).length * n;
+    addMana("R", k); log("effect", { c: short(name), mana: "R" + k });
+  }
   if (c.goblins) { for (let i = 0; i < c.goblins * n; i++) S.bf.push({ uid: S.nextId++, name: GOBLIN, token: true, tapped: false, etbTurn: S.turn }); log("effect", { c: short(name), tokens: c.goblins * n, of: "1/1 Goblin" }); }
   if (c.wheel) for (let i = 0; i < n; i++) await wheelHands(name);
   if (Q_SPELLS.includes(name)) for (let i = 0; i < n; i++) await qSpell(name, opts || {});
@@ -2045,6 +2115,7 @@ async function combat() {
       if (p.frog) continue;
       const m = mult(p, false);
       if (ident(p) === GOGO) for (let i = 0; i < m; i++) items.push(trig("gogo", { src: p.uid }));
+      if (["Loyal Apprentice", "Siege-Gang Lieutenant"].includes(ident(p)) && commanderOut()) for (let i = 0; i < m; i++) items.push(trig("lieutenant", { src: p.uid, name: ident(p) }));   // Lieutenant
       if (p.name === IRMA || ident(p) === IRMA) for (let i = 0; i < m; i++) items.push(trig("irma", { src: p.uid }));
     }
     log("combat", { step: "beginning of combat", triggers: items.length || undefined });
@@ -2065,6 +2136,7 @@ async function combat() {
     const items = [];
     for (const p of att) if (ident(p) === KEFKA && !backUp(p) && !p.frog) for (let i = 0, m = mult(p, false); i < m; i++) items.push(trig("kefka", { src: p.uid, attack: true }));
     for (const p of att) if (ident(p) === SHAMAN_TOKEN && !p.frog) items.push(trig("shamanAtk", { src: p.uid }));   // Fable's Goblin Shaman
+    for (const p of att) if (ident(p) === KINGPIN && !p.frog) for (let i = 0, m = mult(p, false); i < m; i++) items.push(trig("kingpin", { src: p.uid }));
     if (items.length) await putTriggers(items, "attack triggers");
     render(); saveLocal(); return;
   }
@@ -2099,12 +2171,18 @@ const TFX = {
   "Ancestors' Aid": { pp: 2, treasure: 1, note: "first strike" }, "Sudden Breakthrough": { pp: 2, treasure: 1, note: "first strike" },
   "Reckless Ransacking": { pp: 1, pump: 2, treasure: 1 },
   "Kari Zev's Expertise": { untap: 1, haste: 1, kari: 1 }, "Heat Shimmer": { copy: "shimmer" }, "Flash Photography": { copy: "photo" }, "Croaking Counterpart": { copy: "frog" },
+  "Accelerate": { haste: 1, draw: 1 }, "Ancestral Anger": { anger: 1, draw: 1, note: "trample" }, "Blazing Crescendo": { pp: 2, pump: 1, exile: "next" },
+  "Boiling Blood": { draw: 1, note: "attacks this turn if able" }, "Felonious Rage": { pp: 2, haste: 1, dies: DETECTIVE }, "Fists of Flame": { draw: 1, fists: 1, note: "trample" },
+  "Haste Magic": { pp: 2, pump: 1, haste: 1, exile: "turn" }, "Otherworldly Outburst": { pp: 1, dies: HORROR }, "Renegade Tactics": { draw: 1, note: "can't block this turn" },
+  "Stun": { draw: 1, note: "can't block this turn" }, "Siege Smash": { pp: 1, pump: 2, note: "trample" }, "Titan's Strength": { pp: 2, pump: 1, scry: 1 },
+  "Spark of Creativity": { spark: 1 }, "Bond of Passion": { untap: 1, haste: 1, steal: 1, bond: 1 }, "Involuntary Employment": { untap: 1, haste: 1, steal: 1, treasure: 1 },
+  "Press into Service": { untap: 1, haste: 1, steal: 1, support: 2 }, "Traitorous Greed": { untap: 1, haste: 1, steal: 1, mana: 2 },
 };
 async function chooseCreature(name, kind) {
   const mine = S.bf.filter(p => kind === "permanent" ? true : isCreatureP(p));
   const opts = mine.map(p => ({ t: { kind: "perm", uid: p.uid, label: short(ident(p)) }, label: `${permLabel(p)}${isCreatureP(p) ? ` · ${power(p)}/${toughness(p)}` : ""}${p.tapped ? " (tapped)" : ""}` }));
   opts.push({ t: { kind: "other" }, label: `An opponent's ${kind}` });
-  let picked = opts.find(o => o.t.kind === "perm" && ident(S.bf.find(q => q.uid === o.t.uid)) === INK) || opts[0];
+  let picked = opts.find(o => o.t.kind === "perm" && [INK, ZADA].includes(ident(S.bf.find(q => q.uid === o.t.uid)))) || opts[0];
   const wrap = document.createElement("div"); wrap.className = "picklist";
   opts.forEach(o => { const b = document.createElement("button"); b.className = "pick" + (o === picked ? " sel" : "") + (o.t.kind === "perm" ? " mine" : ""); b.textContent = o.label; b.onclick = () => { picked = o; [...wrap.children].forEach(x => x.classList.remove("sel")); b.classList.add("sel"); }; wrap.append(b); });
   pendingArt = name;
@@ -2140,6 +2218,11 @@ function tokenCopy(p, extra = {}) {
 /* one resolution of a creature-targeting spell; a target that left means the spell does nothing */
 async function targetFx(name, it) {
   const fx = TFX[name], t = it.target || { kind: "other" };
+  if (name === "Siege Smash" && it.mode === "art") {
+    const a = await pickPerm("Siege Smash: destroy which artifact?", S.bf.filter(isArtifactP), "Destroy mine", "An opponent's artifact", name, true);
+    if (a && a !== "opp") leaveBf(a, "die", name); else log("effect", { c: "Siege Smash", note: a ? "destroyed an opponent's artifact" : "no target" });
+    return;
+  }
   const p = t.kind === "perm" ? S.bf.find(q => q.uid === t.uid) : null;
   if (t.kind === "perm" && !p) { log("fizzle", { c: short(name), note: `${t.label} is gone` }); return; }
   const ev = { c: short(name), target: p ? permLabel(p) : "an opponent's creature" };
@@ -2147,7 +2230,8 @@ async function targetFx(name, it) {
     if (fx.untap) p.tapped = false;
     if (fx.tap) p.tapped = true;
     if (fx.haste) p.hasteTurn = S.turn;
-    const pp = (fx.pp || 0) + (fx.mountainPP && S.bf.some(q => landTypesP(q).includes("M")) ? 1 : 0);
+    if (fx.dies) (p.dieFx = p.dieFx || []).push({ turn: S.turn, token: fx.dies, from: name });   // when it dies this turn, a token
+    const pp = (fx.pp || 0) + (fx.mountainPP && S.bf.some(q => landTypesP(q).includes("M")) ? 1 : 0) + (fx.anger ? 1 + S.gy.filter(n => n === name).length : 0);
     if (pp) p.ppump = { turn: S.turn, n: ppumpOf(p) + pp };
     if (fx.pump) pump(p, fx.pump);
     if (fx.copy) {
@@ -2166,9 +2250,27 @@ async function targetFx(name, it) {
     } else ev.note = "copied an opponent's permanent by hand";
   }
   if (fx.note) ev.gains = fx.note;
+  if (fx.steal && !p) ev.note = "you control an opponent's creature until end of turn: play it by hand";
+  if (fx.exile) { const x = S.lib.shift(); if (x) { S.ex.push({ n: x, play: true, until: fx.exile === "next" ? S.turn + 1 : S.turn }); ev.exiled = short(x); } }
+  if (fx.spark) await sparkOf(name, p, ev);
+  if (fx.mana) {   // one colour for every copy of the same spell on this stack
+    const keep = S.manaAuto && S.manaAuto.name === name && S.manaAuto.turn === S.turn && S.stack.some(x => x.name === name) ? S.manaAuto.col : null;
+    const col = keep || await chooseColor(`${short(name)}: two mana of which colour?`, IDENT || COLORS, name) || "R";
+    S.manaAuto = { name, turn: S.turn, col };
+    addMana(col, fx.mana); ev.mana = col + fx.mana;
+  }
   log("effect", ev);
   if (fx.treasure) addTreasure(fx.treasure);
   if (fx.draw) draw(fx.draw, short(name));
+  if (fx.fists && p && S.bf.includes(p)) { p.ppump = { turn: S.turn, n: ppumpOf(p) + S.turnStats.draws }; log("effect", { c: short(name), power: `+${S.turnStats.draws}/+0 (cards drawn this turn)` }); }
+  if (fx.scry) await scry(name);
+  if (fx.bond) { const t2 = await chooseTarget("Bond of Passion: 2 damage to any other target", 2); dealDamage(t2, 2, name); }
+  if (fx.support && it.kind === "spell") {   // support 2 on the spell itself, not its copies
+    const mine = S.bf.filter(q => isCreatureP(q) && q !== p);
+    const idx = mine.length ? await multiPick("Press into Service: support 2. A +1/+1 counter on up to two other creatures", mine.map(q => q.name), 2, [], false, name, "Put the counters") : null;
+    for (const i of idx || []) { mine[i].counters = (mine[i].counters || 0) + 1; }
+    if (idx && idx.length) log("support", { c: "Press into Service", on: idx.map(i => permLabel(mine[i])) });
+  }
   if (fx.kari) {   // may cast a spell with mana value 2 or less from hand for free
     const ok = S.hand.filter(n => C[n] && C[n].k !== "land" && (C[n].mv || 0) <= 2);
     if (ok.length) {
@@ -2181,6 +2283,13 @@ async function targetFx(name, it) {
 async function inkCopies(it) {
   const ink = S.bf.find(q => q.uid === it.src);
   const mine = S.bf.filter(q => q.uid !== it.src && (C[it.name].tgt === "permanent" ? isCreatureP(q) : isCreatureP(q)));
+  if (it.eff === "zada") {   // Zada: only creatures you control
+    for (const q of mine) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, mode: it.mode, target: { kind: "perm", uid: q.uid, label: short(ident(q)) } });
+    S.turnStats.copies += mine.length;
+    log("Zada", { c: short(it.name), copies: mine.length, zadaGone: ink ? undefined : true });
+    toast(`Zada: ${mine.length} cop${mine.length === 1 ? "y" : "ies"} of ${short(it.name)}, one for each other creature you control.`, "win");
+    return;
+  }
   const board = oppBoard(), alive = aliveOpps();
   const opp = alive.reduce((a, i) => a + board.n[i], 0);
   for (const q of mine) S.stack.push({ id: S.nextId++, kind: "copy", name: it.name, target: { kind: "perm", uid: q.uid, label: short(ident(q)) } });
@@ -2284,7 +2393,7 @@ async function recruit(source) {   // draw, discard; a nonland discard makes a 1
 }
 async function resolveNephTrigger(it) {
   const e = it.eff;
-  if (e === "ink") await inkCopies(it);
+  if (e === "ink" || e === "zada") await inkCopies(it);
   else if (e === "lotho") { S.life -= 1; addTreasure(1); log("Lotho", { note: "second spell this turn", life: -1, treasures: 1 }); toast("Lotho: you lost 1 life and made a Treasure.", "win"); }
   else if (e === "seeker") {
     const pool = [...new Set(S.lib.filter(n => isSpell(n) && (C[n].mv || 0) <= 2))].sort((a, b) => short(a).localeCompare(short(b)));
@@ -2510,6 +2619,7 @@ async function resolveQTrigger(it) {
   else if (e === "conscripts") await conscriptsEtb(it);
   else if (e === "shamanAtk") { addTreasure(1); log("Goblin Shaman", { treasures: 1 }); }
   else if (e === "ragavan") await ragavanHit(it);
+  else await resolveZadaTrigger(it);
 }
 async function resolveQAbility(it, src) {
   const e = it.eff;
@@ -2543,6 +2653,7 @@ async function resolveQAbility(it, src) {
   else if (e === "abPing") dealDamage(it.target, 1, BALLISTA);
   else if (e === "abBallista") { if (src) { src.counters = (src.counters || 0) + 1; log("Walking Ballista", { counters: src.counters }); } }
   else if (e === "abDraw") draw(1, short(it.name));
+  else await resolveZadaAbility(it, src);
 }
 /* the Q deck's spells that aren't plain flags */
 async function qSpell(name, it) {
@@ -2635,7 +2746,7 @@ async function qSpell(name, it) {
 /* battlefield buttons for the Q deck's permanents; false means nothing happened */
 const Q_ACTS = ["kiki", "mwheel", "flux", "ping", "pingall", "ballista+", "steamkin", "top3", "topdraw", "mindstone", "warroom", "chroma", "bauble", "crypt", "construct"];
 const NEEDLE_ACTS = ["kiki", "mwheel", "flux", "ping", "pingall", "ballista+", "top3", "topdraw", "mindstone", "warroom", "bauble", "crypt", "construct",
-  "vault", "kefka8", "wish", "drsB", "drsG", "kinnan", "gleam", "eat", "islet", "ezone", "minamo", "scoundrel", "harnfel", "staff", "equipFrom"];   // Pithing Needle stops these (not mana abilities)
+  "krenko", "siegegang", "equip", "vault", "kefka8", "wish", "drsB", "drsG", "kinnan", "gleam", "eat", "islet", "ezone", "minamo", "scoundrel", "harnfel", "staff", "equipFrom"];   // Pithing Needle stops these (not mana abilities)
 async function qPermAct(p, v) {
   const uid = p.uid, me = () => S.bf.find(x => x.uid === uid);
   const tapAndPay = (cost, what) => {   // tap it first so it can't pay for itself; autoPay rolls back the whole state when it fails
@@ -2703,6 +2814,100 @@ async function qPermAct(p, v) {
   } else if (v === "construct") {
     if (!tapAndPay({ g: 2 }, "Urza's Saga's Construct")) return false;
     await pushAbility("abConstruct", { src: uid });
+  }
+  return true;
+}
+/* ------------------------------------------------------------------ Zada and the Goblins
+   Zada, Hedron Grinder copies a spell that targets only Zada for each other creature you control (Ink-Treader
+   without the opponents' creatures), so token makers, threaten effects and cantrips multiply. Equipment
+   attaches with q.on; Lieutenant needs your commander on the battlefield. */
+function tokenWords(list) { return list.map(([n, k]) => `${k} ${(C[n] || {}).s || short(n)}${k === 1 ? "" : "s"}`).join(" and "); }
+function makeTokens(list, source, extra = {}) {
+  const made = [];
+  for (const [n, k] of list) for (let i = 0; i < k; i++) { const t = { uid: S.nextId++, name: n, token: true, tapped: false, etbTurn: S.turn, ...extra }; S.bf.push(t); made.push(t); }
+  log("token", { c: short(source), tokens: tokenWords(list) });
+  return made;
+}
+async function scry(source) {
+  const top = S.lib[0]; if (!top) return;
+  pendingArt = top;
+  const v = await openSheet(`${short(source)}: scry 1. The top card is ${short(top)}.`, null, [["Keep it on top", "top", "primary"], ["Put it on the bottom", "bottom"]]);
+  if (v === "bottom") S.lib.push(S.lib.shift());
+  log("scry", { c: short(source), card: short(top), to: v === "bottom" ? "bottom" : "top" });
+}
+/* Spark of Creativity: the exiled card is damage to the target, or a card you may play this turn */
+async function sparkOf(name, p, ev) {
+  const x = S.lib.shift(); if (!x) return;
+  const mv = (C[x] || {}).mv || 0;
+  pendingArt = x;
+  const v = await openSheet(`Spark of Creativity exiled ${short(x)} (mana value ${mv}). Deal ${mv} damage to ${p ? permLabel(p) : "the opponent's creature"}, or play it this turn?`, null, [["Play it this turn", "play", "primary"], [`Deal ${mv} damage`, "dmg"]]);
+  ev.exiled = short(x);
+  if (v === "dmg") { S.ex.push({ n: x }); ev.damage = mv; if (p && mv) damagePerm(p, mv, name); }
+  else { S.ex.push({ n: x, play: true, until: S.turn }); ev.playable = true; }
+}
+async function resolveZadaTrigger(it) {
+  const e = it.eff, src = S.bf.find(q => q.uid === it.src);
+  if (e === "pyro") makeTokens([[ELEMENTAL, 1]], PYRO);
+  else if (e === "etbtok") makeTokens((C[it.name] || {}).etbTokens || [], it.name);
+  else if (e === "tokens") makeTokens(it.tokens, it.name);
+  else if (e === "clamp") draw(2, "Skullclamp");
+  else if (e === "outcast") {
+    const lands = S.bf.filter(q => (C[ident(q)] || {}).k === "land" || q.asLand).length;
+    if (lands >= 6) makeTokens([[DRAGON, 1]], "Dragonmaster Outcast"); else log("Dragonmaster Outcast", { note: `only ${lands} lands now` });
+  } else if (e === "echo") {
+    if (!src) return;
+    src.echoDue = false;
+    pendingArt = it.name;
+    const v = await openSheet(`${short(it.name)}: echo. Pay {${C[it.name].echo}} or sacrifice it.`, null, [[`Pay {${C[it.name].echo}}`, "pay", "primary"], ["Sacrifice it", "sac"]]);
+    if (v === "pay") { const pay = autoPay(parseCost(C[it.name].echo), false); if (pay.ok) { log("echo", { c: short(it.name), paid: C[it.name].echo, tapped: pay.tapped }); return; } toast(`Couldn't pay the echo, so ${short(it.name)} is sacrificed.`, "warn"); }
+    const q = S.bf.find(x => x.uid === it.src); if (q) leaveBf(q, "die", "echo not paid");
+  } else if (e === "lieutenant") {
+    if (it.name === "Loyal Apprentice") makeTokens([[THOPTER, 1]], it.name, { hasteTurn: S.turn });
+    else makeTokens([[GOBLIN, 2]], it.name, { hasteTurn: S.turn });
+  } else if (e === "kingpin") {
+    if (!src) { log("Krenko, Tin Street Kingpin", { note: "it left, so no Goblins" }); return; }
+    src.counters = (src.counters || 0) + 1;
+    const k = Math.max(0, power(src));
+    makeTokens([[GOBLIN, k]], KINGPIN);
+  }
+}
+async function resolveZadaAbility(it, src) {
+  const e = it.eff;
+  if (e === "abKrenko") {
+    const k = S.bf.filter(q => isCreatureP(q) && typesOf(q).includes("Goblin")).length;
+    makeTokens([[GOBLIN, k]], KRENKO);
+  } else if (e === "abSiege") dealDamage(it.target, 1, "Siege-Gang Lieutenant");
+  else if (e === "abEquip") {
+    const t = S.bf.find(q => q.uid === it.target);
+    if (!src || !t || !isCreatureP(t)) { log("fizzle", { c: short(it.name), note: "the equipment or the creature left" }); return; }
+    src.on = t.uid;
+    log("equip", { c: short(src.name), on: permLabel(t) });
+    checkDeaths();   // Skullclamp on a 1/1
+  }
+}
+/* battlefield buttons for Krenko, Siege-Gang Lieutenant and Equipment; false means nothing happened */
+const ZADA_ACTS = ["krenko", "siegegang", "equip"];
+async function zadaPermAct(p, v) {
+  const uid = p.uid;
+  if (v === "krenko") { p.tapped = true; await pushAbility("abKrenko", { src: uid }); }
+  else if (v === "siegegang") {
+    const gobs = S.bf.filter(q => isCreatureP(q) && typesOf(q).includes("Goblin"));
+    const g = await pickPerm("Siege-Gang Lieutenant: sacrifice which Goblin?", gobs, "Sacrifice it", null, p.name);
+    if (!g || g === "opp") return false;
+    const guid = g.uid, pay = autoPay({ g: 2 }, false);
+    if (!pay.ok) { toast("Siege-Gang Lieutenant's ability costs {2}.", "bad"); return false; }
+    const t = await chooseTarget("Siege-Gang Lieutenant: 1 damage to what?", 1);
+    leaveBf(S.bf.find(q => q.uid === guid), "die", "Siege-Gang Lieutenant");
+    await pushAbility("abSiege", { src: uid, target: t });
+  } else if (v === "equip") {
+    if (S.stack.length) { toast("Equip is sorcery speed: resolve the stack first.", "warn"); return false; }
+    const c = C[ident(p)], crs = S.bf.filter(isCreatureP);
+    const t = await pickPerm(`${short(p.name)}: equip which creature? {${c.equip}}`, crs, "Equip it", null, p.name);
+    if (!t || t === "opp") return false;
+    const tuid = t.uid, label = permLabel(t), pay = autoPay({ g: c.equip }, false);
+    if (!pay.ok) { toast(`Equip costs {${c.equip}}.`, "bad"); return false; }
+    log("equip", { c: short(p.name), cost: c.equip, tapped: pay.tapped });
+    await pushAbility("abEquip", { src: uid, target: tuid, label, name: p.name });
   }
   return true;
 }
@@ -3020,6 +3225,10 @@ async function bfMenu(uid) {
     if (!used) btns.unshift(["+1: spells cost {1} less", "ral+1", "primary"], ["−2: 2 damage, maybe draw", "ral-2"], ["−8: exile top eight, cast them free", "ral-8"]);
     btns.push(["Loyalty +1", "loy+"], ["Loyalty −1", "loy-"]);
   }
+  // Zada deck
+  if (ident(p) === KRENKO && !p.tapped && !sick(p)) btns.unshift([`{T}: a Goblin for each Goblin you control (${S.bf.filter(q => isCreatureP(q) && typesOf(q).includes("Goblin")).length})`, "krenko", "primary"]);
+  if (ident(p) === "Siege-Gang Lieutenant") btns.push(["{2}, sacrifice a Goblin: 1 damage to any target", "siegegang"]);
+  if (c.equip) { const on = S.bf.find(q => q.uid === p.on); btns.unshift([`Equip {${c.equip}}${on ? ` (now on ${permLabel(on)})` : ""}`, "equip", "primary"]); }
   // Q deck
   if (ident(p) === KIKI && !backUp(p) && !p.tapped && !sick(p)) btns.unshift(["{T}: a hasty token copy of a nonlegendary creature you control", "kiki", "primary"]);
   if (ident(p) === FABLE && backUp(p) && !p.tapped && !sick(p)) btns.unshift(["{1}, {T}: a hasty token copy of another nonlegendary creature you control", "kiki", "primary"]);
@@ -3172,6 +3381,7 @@ async function bfMenu(uid) {
     log("Tavern Scoundrel", { sacrificed: permLabel(t), tapped: pay.tapped });
     await pushAbility("abFlip", { src: uid });
   }
+  else if (ZADA_ACTS.includes(v)) { if (!(await zadaPermAct(p, v))) { dropSnapshot(); render(); return; } }
   else if (Q_ACTS.includes(v)) { if (!(await qPermAct(p, v))) { dropSnapshot(); render(); return; } }
   else if (v === "ral") transformRal(p);
   else if (v === "loy+" || v === "loy-") { p.loyalty = Math.max(0, (p.loyalty || 0) + (v === "loy+" ? 1 : -1)); log("loyalty", { c: "Ral", loyalty: p.loyalty }); }
@@ -3367,6 +3577,7 @@ async function unfailablePrompt() {
 }
 async function endGame(preset) {
   const methods = DECK.id === "krark" ? ["Krark 100+ (unfailable)", "Vivi pings", "Brain Freeze mill", "Twinflame / Molten Krark army", "Dualcaster loop", "Pinnacle Monk loop", "Electro", "Burn copies", "Combat", "Other"]
+    : [ZADA, KRENKO, KINGPIN].some(n => COMMANDERS.includes(n) || DECK.cards.includes(n)) ? ["Combat", "Burn copies", "Siege-Gang pings", "Other"]
     : COMMANDERS.includes(QSTACK) ? ["Grapeshot storm", "Aetherflux Reservoir", "Kiki-Jiki + Zealous Conscripts", "Dualcaster loop", "Walking Ballista", "Burn copies", "Combat", "Other"]
     : DECK.id === "nephilim" ? ["Deck-out (Gleaming Splendor)", "Ink-Treader draws", "Combat", "Other"]
     : ["Thassa's Oracle", "Kefka, Ruler of Ruin draws", "Brain Freeze mill", "Combat", "Other"];
@@ -3587,7 +3798,7 @@ function render() {
   $("avail").textContent = anyInf(inf) ? "∞" : availableMana();
   document.querySelectorAll("[data-act=loop]").forEach(b => { b.textContent = S.loop ? "End loop" : "Start loop"; b.classList.toggle("rec", !!S.loop); });
   // the status bar shows Combat for decks with combat triggers; every deck has it in the Game menu
-  const fights = [...COMMANDERS, ...DECK.cards].some(n => [KEFKA, GOGO, IRMA, INK, EPOCHAL, RAGAVAN, KIKI, FABLE, CONSCRIPTS].includes(n));
+  const fights = [...COMMANDERS, ...DECK.cards].some(n => [KEFKA, GOGO, IRMA, INK, EPOCHAL, RAGAVAN, KIKI, FABLE, CONSCRIPTS, KINGPIN, "Loyal Apprentice", "Siege-Gang Lieutenant"].includes(n));
   document.querySelectorAll(".status [data-act=combat]").forEach(b => { b.textContent = combatLabel(); b.hidden = !fights; });
   $("opps").innerHTML = S.opp.map((o, i) => `<button class="opp ${S.target === i ? "tgt" : ""} ${o.life <= 0 || o.lib <= 0 ? "dead" : ""}" data-opp="${i}" aria-label="Opponent ${i + 1}"><b>${o.life}</b><small>lib ${o.lib} · h ${o.hand}</small></button>`).join("");
   $("ohand").textContent = S.opp[S.target].hand;
@@ -3605,7 +3816,8 @@ function render() {
   const bfChip = p => {
     const id = ident(p), pic = hasArt(id), copy = p.copyOf && p.copyOf !== p.name;
     const tags = [isRalPW(p) ? "loyalty " + (p.loyalty ?? 0) : "", dmgOf(p) ? `${dmgOf(p)} dmg` : "", pumpOf(p) && isCreatureP(p) ? `${power(p)}/${toughness(p)}` : "", p.token ? "token" : "", p.staff ? "✦staff" : "", p.counters ? "+" + p.counters : "", pic && copy ? (p.name === SAKA ? "Sakashima" : "copy") : "",
-      p.lore && !backUp(p) ? "lore " + p.lore : "", p.keyType ? "−1 " + p.keyType : "", p.named ? "names " + short(p.named) : "", p.dash ? "dashed" : "", mooned(p) ? "Mountain" : ""].filter(Boolean).join(" ");
+      p.lore && !backUp(p) ? "lore " + p.lore : "", p.keyType ? "−1 " + p.keyType : "", p.named ? "names " + short(p.named) : "", p.dash ? "dashed" : "", mooned(p) ? "Mountain" : "",
+      (C[id] || {}).equip && S.bf.some(q => q.uid === p.on) ? "on " + short(ident(S.bf.find(q => q.uid === p.on))) : "", id === THRONE && p.ctype ? p.ctype : "", p.echoDue ? "echo" : ""].filter(Boolean).join(" ");
     return `<button class="card ${kindClass(id)} ${p.tapped ? "tapped" : ""} ${p.token ? "token" : ""} ${pic ? "pic" : ""}" data-uid="${p.uid}" aria-label="${esc(short(p.name) + (copy ? " as " + short(p.copyOf) : "") + (p.tapped ? ", tapped" : ""))}">${artTag(id, p.flipped)}<span class="cn">${esc(short(p.name))}${copy ? " → " + esc(short(p.copyOf)) : ""}</span><span class="cc">${esc(tags)}</span></button>`;
   };
   $("lands").innerHTML = lands.map(bfChip).join("") || `<p class="empty">No lands.</p>`;
@@ -3659,6 +3871,7 @@ function engineSummary() {
   if (qc.length) bits.push(`Q copies: ${qc.join(", ")}`);
   if (onBf(AETHER)) bits.push(`Aetherflux +${S.turnStats.casts + 1} life next spell`);
   if (moonOn()) bits.push("Blood Moon: nonbasic lands make R");
+  if (onBf(ZADA)) bits.push(`Zada: ${S.bf.filter(isCreatureP).length - 1} copies of a spell aimed at it`);
   return bits.length ? bits.join(" · ") : "No cast triggers on the battlefield.";
 }
 function renderLog() {

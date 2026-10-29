@@ -5,6 +5,7 @@ const fs = require('fs'), path = require('path');
 const BASE = process.env.SITE_URL || 'http://127.0.0.1:4173/';
 const fixture = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/kefka.scryfall.json'), 'utf8')).data;
 const deckText = fs.readFileSync(path.resolve(__dirname, '../fixtures/kefka.txt'), 'utf8');
+const TWIN = { name: 'Kefka Twin', layout: 'normal', mana_cost: '{U}{B}{R}', cmc: 3, type_line: 'Legendary Creature — Human Wizard', oracle_text: '', power: '2', toughness: '2', color_identity: ['B', 'R', 'U'] };
 const ELVES = { name: 'Arbor Elf', layout: 'normal', mana_cost: '{G}', cmc: 1, type_line: 'Creature — Elf Druid', oracle_text: '{T}: Add {G}.', power: '1', toughness: '1', color_identity: ['G'], produced_mana: ['G'] };
 (async () => {
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
@@ -16,7 +17,7 @@ const ELVES = { name: 'Arbor Elf', layout: 'normal', mana_cost: '{G}', cmc: 1, t
     p.requests = 0;
     await p.route('https://api.scryfall.com/cards/collection', async route => {
       p.requests++;
-      const all = [...fixture, ELVES];
+      const all = [...fixture, ELVES, TWIN];
       const ids = JSON.parse(route.request().postData()).identifiers;
       const data = ids.map(i => all.find(c => c.name.split(' // ')[0] === i.name)).filter(Boolean);
       const not_found = ids.filter(i => !all.some(c => c.name.split(' // ')[0] === i.name));
@@ -77,6 +78,14 @@ const ELVES = { name: 'Arbor Elf', layout: 'normal', mana_cost: '{G}', cmc: 1, t
   if (!/the guess is Kefka, Court Mage/.test(warn)) fail('commander not guessed');
   if (/No commander found/.test(warn)) fail('still says no commander');
   if (prompt) fail('a fully modeled deck should need no request');
+  // two legends could lead it: the warning offers both, and a click picks one
+  await check(p, [...lines.slice(1, 40), lines[0], ...lines.slice(40, -1), '1 Kefka Twin'].join('\n'));
+  const picks = await p.$$eval('[data-cmdr]', els => els.map(e => e.textContent));
+  console.log('tie | picks:', picks.join(', '));
+  if (picks.length !== 2 || !picks.includes('Kefka Twin')) fail('the tied legends are not offered');
+  await p.click('[data-cmdr="Kefka, Court Mage // Kefka, Ruler of Ruin"]');
+  if (!/Kefka, Court Mage is the commander/.test(await p.textContent('#status'))) fail('picking a commander did not take');
+  if (await p.$('[data-cmdr]')) fail('the commander buttons stay after a pick');
   await p.close();
   console.log('errors:', errs);
   await b.close();
