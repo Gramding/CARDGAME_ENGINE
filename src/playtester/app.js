@@ -1456,6 +1456,33 @@ function removeFromStack(it, to) {
   else if (to === "ex" || it.from === "flashback" || it.from === "harmonize") S.ex.push({ n: it.name });
   else toGy(it.name);
 }
+/* put the stack in another order by hand (a fix-up, like Clear): runs of the same item move together */
+async function reorderStack() {
+  if (S.stack.length < 2) { toast("Nothing to reorder."); return; }
+  const list = [];   // top first
+  for (const it of [...S.stack].reverse()) { const g = list[list.length - 1], lab = stackLabel(it); if (g && g.label === lab) g.items.push(it); else list.push({ label: lab, items: [it] }); }
+  const wrap = document.createElement("div"); wrap.className = "orderlist";
+  const mk = (label, disabled, fn, aria) => { const b = document.createElement("button"); b.className = "mini"; b.textContent = label; b.disabled = disabled; b.setAttribute("aria-label", aria); b.onclick = fn; return b; };
+  const paint = () => {
+    wrap.innerHTML = `<p class="info">The top row resolves first. Identical items next to each other move together.</p>`;
+    list.forEach((g, i) => {
+      const art = stackArt(g.items[0]), row = document.createElement("div"); row.className = "orow";
+      row.innerHTML = `<span class="onum">${i + 1}</span>${hasArt(art) ? `<img class="othumb" src="${IMG[art].f}" alt="">` : ""}<span class="olab">${esc(g.label)}${g.items.length > 1 ? ` <b>×${g.items.length}</b>` : ""}</span>`;
+      row.append(
+        mk("↑", i === 0, () => { [list[i - 1], list[i]] = [list[i], list[i - 1]]; paint(); }, "Move up"),
+        mk("↓", i === list.length - 1, () => { [list[i + 1], list[i]] = [list[i], list[i + 1]]; paint(); }, "Move down"),
+        mk("Top", i === 0, () => { list.unshift(list.splice(i, 1)[0]); paint(); }, "Move to the top"));
+      wrap.append(row);
+    });
+  };
+  paint();
+  const v = await openSheet(`Reorder the stack (${S.stack.length} items)`, wrap, [["Use this order", "go", "primary"], ["Cancel", null]]);
+  if (v !== "go") return;
+  snapshotUndo();
+  S.stack = list.flatMap(g => g.items).reverse();
+  log("stack reordered", { top: stackLabel(S.stack[S.stack.length - 1]) });
+  render(); saveLocal();
+}
 async function clearStack() {
   const v = await openSheet(`Clear all ${S.stack.length} items from the stack? Spells go to the graveyard.`, null, [["Clear the stack", "go", "primary"], ["Cancel", null]]);
   if (v !== "go") return;
@@ -1470,6 +1497,8 @@ async function stackMenu(id) {
   const top = it === S.stack[S.stack.length - 1];
   const btns = [];
   if (top) btns.push(["Resolve", "resolve", "primary"]);
+  if (!top) btns.push(["Move to the top", "totop"]);
+  if (S.stack.length > 1 && it !== S.stack[0]) btns.push(["Move to the bottom", "tobottom"]);
   btns.push([it.stop ? "Remove the stop" : "Stop Resolve all here", "stop"]);
   if (it.target) btns.push(["Change target", "retarget"]);
   if (it.kind === "spell") btns.push(["Countered (to graveyard)", "gy"], ["Return to hand", "hand"], ["Exile", "ex"]);
@@ -1481,6 +1510,12 @@ async function stackMenu(id) {
   if (v === "resolve") return resolveTop();
   if (v === "stop") { it.stop = !it.stop; log(it.stop ? "stop set" : "stop removed", { c: stackLabel(it) }); render(); saveLocal(); return; }
   snapshotUndo();
+  if (v === "totop" || v === "tobottom") {
+    S.stack = S.stack.filter(x => x !== it);
+    if (v === "totop") S.stack.push(it); else S.stack.unshift(it);
+    log("stack reordered", { c: stackLabel(it), to: v === "totop" ? "top" : "bottom" });
+    render(); saveLocal(); return;
+  }
   if (v === "retarget") {
     const before = targetLabel(it.target);
     it.target = await chooseTarget(`${stackLabel(it)}: new target`, C[it.name].burn || 0, it.target);
@@ -3876,6 +3911,7 @@ function render() {
   const tr = document.querySelector(".tray"), st = document.querySelector(".status");
   if (tr && st) document.documentElement.style.setProperty("--trayH", (tr.offsetHeight + st.offsetHeight) + "px");
   $("stackCount").textContent = S.stack.length;
+  $("reorderBtn").hidden = S.stack.length < 2;
   // remembered copy / clone choices, each one removable so a loop can be ended by hand
   const autos = [];
   for (const [src, t] of Object.entries(S.copyAuto || {})) autos.push(["copy", src, `${short(src)} → ${t.kind === "trigger" ? (TRIG[t.eff] ? TRIG[t.eff].nm + " trigger" : "trigger") : short(t.name)}`]);
@@ -4221,7 +4257,7 @@ function runAct(act) {
   if (kind === "ohand") { const o = S.opp[S.target]; o.hand = Math.max(0, o.hand + +arg); render(); saveLocal(); return; }
   if (act === "imgs") { showImg = !showImg; try { localStorage.setItem("krark-playtest-images", showImg ? "on" : "off"); } catch (e) { /* per-browser only */ } render(); return; }
   const fns = { drill: () => drillToggle(true), drillExit: () => drillToggle(false), drillKeep: () => drillAnswer("keep"), drillMull: () => drillAnswer("mull"),
-    drillBack: () => { if (drill) { drill.phase = "decide"; drill.bottom = []; renderDrill(); } }, clearStack, newgame: newGame, combat, mull: mulligan, keep, next: nextTurn, redo, resolve: resolveTop, resolveAll, loop: loopToggle, draw: () => { snapshotUndo(); draw(1, "draw (extra)"); render(); }, undo, search: librarySearch, end: endGame, note: addNote, export: exportGame, mill: () => { snapshotUndo(); const x = S.lib.shift(); if (x) { toGy(x); log("mill self", { c: short(x) }); } render(); } };
+    drillBack: () => { if (drill) { drill.phase = "decide"; drill.bottom = []; renderDrill(); } }, clearStack, reorderStack, newgame: newGame, combat, mull: mulligan, keep, next: nextTurn, redo, resolve: resolveTop, resolveAll, loop: loopToggle, draw: () => { snapshotUndo(); draw(1, "draw (extra)"); render(); }, undo, search: librarySearch, end: endGame, note: addNote, export: exportGame, mill: () => { snapshotUndo(); const x = S.lib.shift(); if (x) { toGy(x); log("mill self", { c: short(x) }); } render(); } };
   if (fns[act]) fns[act]();
 }
 $("sheetClose").onclick = () => closeSheet(null);
