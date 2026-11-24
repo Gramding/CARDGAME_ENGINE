@@ -75,8 +75,10 @@ chips show library and hand, and the hand counter in the top bar adjusts the tar
   tapped, since the page doesn't track their boards.
 - **Kodama of the East Tree + Sakashima:** every permanent that enters (a land, a creature, a Treasure,
   a face-down morph) lets Kodama put a card with an equal or lower mana value from your hand onto the
-  battlefield. A second Kodama from Sakashima or Phantasmal Image answers the first, so the chain keeps
-  going until your hand runs out. Landfall works for Lotus Cobra, Nissa, Aesi (with its extra land drop)
+  battlefield. Its trigger always waits on the stack, even with nothing in hand, so you can respond
+  (Quirion Ranger or Meloku returning a land for it to put back). Each Kodama triggers on its own, and a
+  second one from Sakashima or Phantasmal Image answers what the first put in, so the chain keeps going
+  until your hand runs out. Landfall works for Lotus Cobra, Nissa, Aesi (with its extra land drop)
   and Tireless Provisioner. Ashaya makes your nontoken creatures Forest lands and Yavimaya makes every
   land a Forest. Badgermole Cub and Leyline of Abundance add {G} whenever a creature taps for mana.
   Somberwald Sage, Gwenna and Castle Garenbrig make mana that only pays for creature spells. The deck

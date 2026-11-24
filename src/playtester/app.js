@@ -1231,8 +1231,10 @@ async function cast(name, zone, opts = {}) {
 async function settle() {
   let guard = 0;
   await flushEnter();
-  while (!holdPriority && S.stack.length === 1 && S.stack[0].auto && guard++ < 20) { await resolveItem(S.stack.pop()); await flushEnter(); }
+  while (!holdPriority && S.stack.length === 1 && S.stack[0].auto && !held(S.stack[0]) && guard++ < 20) { await resolveItem(S.stack.pop()); await flushEnter(); }
 }
+/* triggers worth responding to (Kodama's) wait on the stack even when you don't hold priority */
+function held(it) { return it.kind === "trigger" && !!(TRIG[it.eff] || {}).hold; }
 async function resolveTop() {
   if (travelBlocked()) return;
   if (!S.stack.length) { toast("The stack is empty."); return; }
@@ -1299,6 +1301,7 @@ async function enterBf(name, extra = {}) {
     const empty = !S.stack.length;
     await putTriggers(items, `${short(name)} entered`);
     if (empty && items.length === 1 && !TRIG[items[0].eff].wait) items[0].auto = true;
+    kodamaWaiting(items);
     if (items.some(t => TRIG[t.eff].wait)) toast(`${short(name)}'s trigger is waiting on the stack. Respond now (Demonic Consultation, Tainted Pact) or resolve it.`, "win");
   }
   if (isCreatureP(p) && S.bf.includes(p) && toughness(p) <= 0) leaveBf(p, "die", "0 toughness");   // a Walking Ballista for X = 0
@@ -3070,7 +3073,7 @@ function costText(c) { return "{" + [c.g ? c.g : "", ...[...COLORS].map(ch => (c
 if (C["Pact of Negation"] && !C["Pact of Negation"].pact) C["Pact of Negation"].pact = "3UU";
 TFX["Legolas's Quick Reflexes"] = { untap: 1, note: "reach, hexproof, and when it becomes tapped it deals damage equal to its power to up to one target creature" };
 Object.assign(TRIG, {
-  kodama:     { nm: "Kodama", src: KODAMA, rank: 6, label: it => `Kodama: ${it.name} entered, put a permanent card with mana value ${it.mv} or less from your hand onto the battlefield` },
+  kodama:     { nm: "Kodama", src: KODAMA, rank: 6, hold: true, label: it => `Kodama: ${it.name} entered, put a permanent card with mana value ${it.mv} or less from your hand onto the battlefield` },
   curio:      { nm: "Curio", src: CURIO, rank: 6, label: it => `Cloudstone Curio: ${it.name} entered, return another ${it.kinds.join(" or ")} you control` },
   tezCap:     { nm: "Tezzeret", src: TEZ_CAP, rank: 1, label: () => "Tezzeret, Cruel Captain: an artifact entered, a loyalty counter" },
   aesi:       { nm: "Aesi", src: AESI, rank: 2, label: () => "Aesi landfall: draw a card" },
@@ -3155,7 +3158,7 @@ function enterItems(p) {
   for (const q of S.bf) {
     if (q.frog || q.faceDown) continue;
     const qi = ident(q), add = (eff, extra) => { for (let i = 0, m = mult(q, false); i < m; i++) out.push(trig(eff, { src: q.uid, ...extra })); };
-    if (qi === KODAMA && q !== p && p.byKodama !== q.uid && kodamaCands(mv).length) add("kodama", { mv, name: label, ent: p.uid });
+    if (qi === KODAMA && q !== p && p.byKodama !== q.uid) add("kodama", { mv, name: label, ent: p.uid });   // it triggers even with nothing in hand: you can respond (Quirion Ranger, Meloku) and fill it
     if (qi === CURIO && !art) add("curio", { ent: p.uid, kinds: permKinds(p), name: label });
     if (qi === TEZ_CAP && art && isPW(q)) add("tezCap");
     if (land) {
@@ -3167,6 +3170,10 @@ function enterItems(p) {
   }
   return out;
 }
+function kodamaWaiting(items) {
+  const k = items.filter(t => t.eff === "kodama").length;
+  if (k && !quiet) toast(`${k} Kodama trigger${k === 1 ? " is" : "s are"} on the stack. Respond now (Quirion Ranger, Meloku, Oboro) or resolve ${k === 1 ? "it" : "them"}.`, "win");
+}
 function noteEnter(p) { const items = enterItems(p); if (items.length) (S.enterQ = S.enterQ || []).push(...items); }
 async function flushEnter() {
   const q = S.enterQ; if (!q || !q.length) return;
@@ -3174,6 +3181,7 @@ async function flushEnter() {
   const empty = !S.stack.length;
   await putTriggers(q, "permanents entered");
   if (empty && q.length === 1 && !holdPriority) q[0].auto = true;
+  kodamaWaiting(q);
 }
 async function shockAsk(n) {
   if (!(C[n] || {}).shock) return undefined;
@@ -3286,7 +3294,7 @@ async function resolveKodamaTrigger(it, src) {
   const e = it.eff;
   if (e === "kodama") {
     const cands = kodamaCands(it.mv);
-    if (!cands.length) { log("Kodama", { note: `nothing in hand with mana value ${it.mv} or less` }); return; }
+    if (!cands.length) { log("Kodama", { note: `nothing in hand with mana value ${it.mv} or less` }); toast(`Kodama: nothing in your hand with mana value ${it.mv} or less.`, "warn"); return; }
     const pre = cands.find(isLandCard) || cands[0];
     const n = await pickName(`Kodama: ${it.name} entered. Put a permanent card with mana value ${it.mv} or less from your hand onto the battlefield?`, cands, pre, "Put it in", KODAMA, true);
     if (!n) { log("Kodama", { note: "put nothing in" }); return; }
