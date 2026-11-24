@@ -24,7 +24,7 @@ const { table, check } = require('./lib');
   check('Deathrite Shaman {B/G} paid with green', await state(() => S.bf.some(p => p.name === 'Deathrite Shaman') && S.bf[0].tapped));
 
   // every fetch land knows its land types; Windswept Heath finds Forests and Plains
-  check('Every fetch land has land types to search for', await state(() => Object.values(C).filter(c => c.fetch).every(c => /^[IMSPF]{2}$/.test(FETCH[c.n] || ''))));
+  check('Every fetch land has land types to search for', await state(() => Object.values(C).filter(c => c.fetch).every(c => c.fetchBasic || /^[IMSPF]{2}$/.test(FETCH[c.n] || ''))));
   await setup(['Green Sun\'s Zenith'], ['Windswept Heath']);
   check('Windswept Heath finds Savannah, Taiga, Bayou, Tropical Island, Tundra and Scrubland', await state(() => ['Savannah', 'Taiga', 'Bayou', 'Tropical Island', 'Tundra', 'Scrubland'].every(n => fetchTargets('Windswept Heath').includes(n)) && !fetchTargets('Windswept Heath').includes('Volcanic Island')));
   await go(() => cast("Green Sun's Zenith", 'hand')); await ev(() => { document.getElementById('xVal').value = 0; }); await press('Cast it');

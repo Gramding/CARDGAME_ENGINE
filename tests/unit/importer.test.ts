@@ -6,14 +6,14 @@ import { coverage, isDataOnly } from "../../src/importer/coverage";
 import { buildPrompt } from "../../src/importer/prompt";
 import { lookupCards, trimCard, type CardData } from "../../src/importer/scryfall";
 import { applyCommander, commanderCandidates, guessCommander } from "../../src/importer/commander";
-import { playDeck, shortCost, stubCard } from "../../src/importer/deck";
+import { playDeck, setAsideStickers, shortCost, stubCard } from "../../src/importer/deck";
 
 const fixture = (f: string) => readFileSync(resolve(__dirname, "../fixtures", f), "utf8");
 const kefkaText = fixture("kefka.txt");
 const kefkaData: CardData[] = JSON.parse(fixture("kefka.scryfall.json")).data;
 const byName = (n: string) => kefkaData.find(c => c.name === n)!;
-const FOREST: CardData = { name: "Forest", layout: "normal", type_line: "Basic Land — Forest", oracle_text: "({T}: Add {G}.)", color_identity: ["G"], produced_mana: ["G"] };
-const ELVES: CardData = { name: "Arbor Elf", layout: "normal", mana_cost: "{G}", cmc: 1, type_line: "Creature — Elf Druid", oracle_text: "{T}: Untap target Forest.", power: "1", toughness: "1", color_identity: ["G"], produced_mana: ["G"] };
+const PLAINS: CardData = { name: "Plains", layout: "normal", type_line: "Basic Land — Plains", oracle_text: "({T}: Add {W}.)", color_identity: ["W"], produced_mana: ["W"] };
+const ELVES: CardData = { name: "Wirewood Elf", layout: "normal", mana_cost: "{1}{G}", cmc: 2, type_line: "Creature — Elf Druid", oracle_text: "{T}: Add {G}.", power: "1", toughness: "2", color_identity: ["G"], produced_mana: ["G"] };
 
 /** A fetch stand-in that answers /cards/collection from the fixture. */
 const fakeFetch = (async (_url: string, init: { body: string }) => {
@@ -79,21 +79,21 @@ describe("coverage", () => {
   });
 
   it("sorts cards the engine doesn't know into data only and needs scripting", () => {
-    const cov = coverage(["Forest", "Arbor Elf", "Sol Ring"], new Map([["Forest", FOREST], ["Arbor Elf", ELVES], ["Sol Ring", byName("Sol Ring")]]));
+    const cov = coverage(["Plains", "Wirewood Elf", "Sol Ring"], new Map([["Plains", PLAINS], ["Wirewood Elf", ELVES], ["Sol Ring", byName("Sol Ring")]]));
     expect(cov.cards.map(c => c.status)).toEqual(["data", "script", "modeled"]);
-    expect(cov.colors).toEqual(["G"]);
+    expect(cov.colors).toEqual(["W", "G"]);
   });
 });
 
 describe("buildPrompt", () => {
   it("lists the missing cards with oracle text and the done criteria", async () => {
-    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Arbor Elf\n1 Forest\n1 Sol Ring`);
-    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Arbor Elf", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
+    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Wirewood Elf\n1 Plains\n1 Sol Ring`);
+    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Wirewood Elf", ELVES], ["Plains", PLAINS], ["Sol Ring", byName("Sol Ring")]]);
     const cov = coverage(deckNames(d), cards);
     const p = buildPrompt(d, cov);
     expect(p).toContain("Commander: Kefka, Court Mage");
-    expect(p).toContain("### Arbor Elf");
-    expect(p).toContain("> {T}: Untap target Forest.");
+    expect(p).toContain("### Wirewood Elf");
+    expect(p).toContain("> {T}: Add {G}.");
     expect(p).toContain("## Data only (1)");
     expect(p).toContain("## Needs scripting (1)");
     expect(p).not.toContain("### Sol Ring");
@@ -121,6 +121,14 @@ describe("commander guess", () => {
     expect(deckSize(fixed)).toBe(100);
   });
 
+  it("sets Unfinity sticker sheets aside", () => {
+    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Sol Ring\n1 Trendy Circus Pirate`);
+    const sheet = { name: "Trendy Circus Pirate", layout: "sticker", type_line: "Stickers", color_identity: [] } as unknown as CardData;
+    const { deck, stickers } = setAsideStickers(d, new Map([["Sol Ring", byName("Sol Ring")], ["Trendy Circus Pirate", sheet]]));
+    expect(stickers).toEqual(["Trendy Circus Pirate"]);
+    expect(deck.cards.map(l => l.name)).toEqual(["Sol Ring"]);
+  });
+
   it("makes no guess when two legends cover the colors", () => {
     const d = parseDecklist(`1 Kefka, Court Mage // Kefka, Ruler of Ruin\n1 Kefka Clone\n1 Sol Ring`);
     const k = byName("Kefka, Court Mage // Kefka, Ruler of Ruin");
@@ -132,15 +140,15 @@ describe("commander guess", () => {
 
 describe("playDeck", () => {
   it("hands the playtester the full list, with plain data for unmodeled cards", () => {
-    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Arbor Elf\n2 Forest\n1 Sol Ring`);
-    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Arbor Elf", ELVES], ["Forest", FOREST], ["Sol Ring", byName("Sol Ring")]]);
+    const d = parseDecklist(`1 Kefka, Court Mage\n\n1 Wirewood Elf\n2 Plains\n1 Sol Ring`);
+    const cards = new Map([["Kefka, Court Mage", byName("Kefka, Court Mage // Kefka, Ruler of Ruin")], ["Wirewood Elf", ELVES], ["Plains", PLAINS], ["Sol Ring", byName("Sol Ring")]]);
     const pd = playDeck(d, coverage(deckNames(d), cards), cards, "Test deck");
     expect(pd.id).toBe("imp-test-deck");
     expect(pd.commanders).toEqual(["Kefka, Court Mage // Kefka, Ruler of Ruin"]);
-    expect(pd.cards).toEqual(["Arbor Elf", "Forest", "Forest", "Sol Ring"]);
-    expect(Object.keys(pd.extra).sort()).toEqual(["Arbor Elf", "Forest"]);
-    expect(pd.extra["Arbor Elf"]).toMatchObject({ k: "creature", c: "G", mv: 1, pt: [1, 1], ty: ["Elf", "Druid"], manual: 1 });
-    expect(pd.extra["Forest"]).toMatchObject({ k: "land", mana: "G", amt: 1 });
+    expect(pd.cards).toEqual(["Wirewood Elf", "Plains", "Plains", "Sol Ring"]);
+    expect(Object.keys(pd.extra).sort()).toEqual(["Plains", "Wirewood Elf"]);
+    expect(pd.extra["Wirewood Elf"]).toMatchObject({ k: "creature", c: "1G", mv: 2, pt: [1, 2], ty: ["Elf", "Druid"], manual: 1 });
+    expect(pd.extra["Plains"]).toMatchObject({ k: "land", mana: "W", amt: 1 });
   });
 
   it("writes costs the way the playtester reads them", () => {

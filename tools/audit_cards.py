@@ -17,10 +17,12 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 KNOWN = {
-    "Blood Crypt": "shock land: pays 2 life or enters tapped", "Steam Vents": "shock land", "Watery Grave": "shock land",
+    "Blood Crypt": "shock land: pays 2 life or enters tapped", "Steam Vents": "shock land", "Watery Grave": "shock land", "Breeding Pool": "shock land",
     "Chrome Mox": "colour comes from the imprinted card", "Mox Amber": "colour comes from your legends",
     "Return the Favor": "cost includes the {1} spree mode for copying",
     "Kefka, Court Mage // Kefka, Ruler of Ruin": "flying is on the back face",
+    "Ashaya, Soul of the Wild": "power and toughness count your lands", "Dryad Arbor": "played as a land, so its kind is land",
+    "Baxter Building": "its any-colour mana is a {4} ability", "Talon Gates of Madara": "its any-colour mana is a {1} ability",
 }
 KO = ["creature", "land", "artifact", "enchantment", "planeswalker", "instant", "sorcery"]
 BT = {"Island": "I", "Mountain": "M", "Swamp": "S", "Plains": "P", "Forest": "F"}
