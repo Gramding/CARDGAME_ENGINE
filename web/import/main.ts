@@ -3,14 +3,14 @@ import { coverage, type Coverage, type Status } from "../../src/importer/coverag
 import { buildPrompt } from "../../src/importer/prompt";
 import { imageOf, lookupCards, type CardData } from "../../src/importer/scryfall";
 import { applyCommander, commanderCandidates, guessCommander } from "../../src/importer/commander";
-import { playDeck, saveDeck } from "../../src/importer/deck";
+import { playDeck, saveDeck, setAsideStickers } from "../../src/importer/deck";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
 const LABEL: Record<Status, string> = { modeled: "Modeled", data: "Data only", script: "Needs scripting" };
 const DRAFT_KEY = "cge-import-draft";
 
-let current: { deck: ParsedDeck; cov: Coverage; cards: Map<string, CardData>; guessed: string | null } | null = null;
+let current: { deck: ParsedDeck; cov: Coverage; cards: Map<string, CardData>; guessed: string | null; stickers?: string[] } | null = null;
 let filter: Status | "all" = "all";
 
 function setStatus(text: string, bad = false) {
@@ -36,6 +36,7 @@ function render() {
     ["modeled", String(cov.counts.modeled), "modeled"], ["data", String(cov.counts.data), "data only"], ["script", String(cov.counts.script), "need scripting"],
   ].map(([cls, v, l]) => `<div class="stat ${cls}"><b>${esc(v)}</b><span>${l}</span></div>`).join("");
   const warns = [...deck.warnings];
+  if (current.stickers?.length) warns.push(`${current.stickers.length} sticker sheet${current.stickers.length === 1 ? "" : "s"} set aside: they aren't part of the 100 and the playtester doesn't use them (${current.stickers.join(", ")}).`);
   if (guessed) warns.push(`No commander was marked, so the guess is ${guessed.split(" // ")[0]}: the only legendary creature whose colors cover the whole deck. To pick another, put it first with a blank line after it.`);
   const picks = deck.commanders.length ? [] : commanderCandidates(deck, current.cards);
   if (!deck.commanders.length) warns.push(picks.length ? `No commander was marked, and ${picks.length} legends could lead this deck. Pick one below.` : "No commander found. Put it first with a blank line after it, or under a \"Commander\" heading.");
@@ -62,9 +63,11 @@ async function check() {
   btn.disabled = true;
   try {
     const { cards, notFound } = await lookupCards(names, (done, total) => setStatus(`Looking up cards on Scryfall: ${done} of ${total}`));
+    const set = setAsideStickers(deck, cards);
+    deck = set.deck;
     const guessed = deck.commanders.length ? null : guessCommander(deck, cards);
     if (guessed) deck = applyCommander(deck, guessed);
-    current = { deck, cov: coverage(deckNames(deck), cards), cards, guessed };
+    current = { deck, cov: coverage(deckNames(deck), cards), cards, guessed, stickers: set.stickers };
     setStatus(notFound.length ? `Done. Not found on Scryfall: ${notFound.join(", ")}` : `Done. ${names.length} cards checked.`, notFound.length > 0);
     render();
   } catch (e) {

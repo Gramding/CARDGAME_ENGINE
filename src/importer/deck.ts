@@ -20,6 +20,13 @@ export interface PlayDeck {
 const KINDS = ["creature", "land", "artifact", "enchantment", "planeswalker", "battle", "instant", "sorcery"];
 
 /** "{2}{U}{B}" -> "2UB", the playtester's cost format (hybrid and Phyrexian symbols stay in braces). */
+/** Unfinity sticker sheets sit outside the 100 (Moxfield lists them with the deck): take them out of the list. */
+export function setAsideStickers(deck: ParsedDeck, cards: Map<string, CardData>): { deck: ParsedDeck; stickers: string[] } {
+  const isSheet = (n: string) => (cards.get(n)?.type_line ?? "") === "Stickers";
+  const stickers = deck.cards.filter(l => isSheet(l.name)).map(l => l.name);
+  return { deck: { ...deck, cards: deck.cards.filter(l => !isSheet(l.name)) }, stickers };
+}
+
 export function shortCost(cost: string | undefined): string {
   return (cost ?? "").replace(/\{(\d+|[WUBRGC])\}/g, "$1").replace(/\{X\}/g, "");
 }

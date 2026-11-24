@@ -1,7 +1,8 @@
 # Cardgame engine
 
-A browser playtester for Commander goldfishing. It ships with four cEDH decks (Krark, the Thumbless +
-Sakashima of a Thousand Faces, Kefka, Court Mage, Nephilim Epochal, and Q, Stacking the Deck) and plays any deck you import. There is also a
+A browser playtester for Commander goldfishing. It ships with five cEDH decks (Krark, the Thumbless +
+Sakashima of a Thousand Faces, Kefka, Court Mage, Nephilim Epochal, Q, Stacking the Deck, and Kodama of the
+East Tree + Sakashima) and plays any deck you import. There is also a
 Python simulator for the Krark deck. The plan is to grow the playtester
 into a general engine where card behaviour lives in per-card scripts and anything unscripted can
 still be played by hand.
@@ -72,6 +73,16 @@ chips show library and hand, and the hand counter in the top bar adjusts the tar
   turns your nonbasic lands into Mountains. Alternative costs work for Fireblast, Flare of
   Duplication, Fury's evoke and Ragavan's dash. Mana Geyser asks how many lands your opponents have
   tapped, since the page doesn't track their boards.
+- **Kodama of the East Tree + Sakashima:** every permanent that enters (a land, a creature, a Treasure,
+  a face-down morph) lets Kodama put a card with an equal or lower mana value from your hand onto the
+  battlefield. A second Kodama from Sakashima or Phantasmal Image answers the first, so the chain keeps
+  going until your hand runs out. Landfall works for Lotus Cobra, Nissa, Aesi (with its extra land drop)
+  and Tireless Provisioner. Ashaya makes your nontoken creatures Forest lands and Yavimaya makes every
+  land a Forest. Badgermole Cub and Leyline of Abundance add {G} whenever a creature taps for mana.
+  Somberwald Sage, Gwenna and Castle Garenbrig make mana that only pays for creature spells. The deck
+  also has earthbending (Badgermole Cub and The Legend of Kyoshi), both Tezzerets' loyalty abilities,
+  Lotus Bloom's suspend, Summoner's Pact's upkeep payment, Memory Jar, Fight Rigging's hideaway,
+  Aphetto Alchemist's morph, Talon Gates' phasing, and the land, untap and bounce abilities.
 
 Imported decks get the same rules help for their modeled cards. A mono-red Zada list is covered: Zada,
 Hedron Grinder copies a spell aimed only at it for each other creature you control, so the cantrips,
@@ -107,6 +118,7 @@ or Moxfield's `[Commander]` category tag works too, and other category tags are 
 - **Needs scripting:** anything with its own rules.
 
 If no commander is marked, it guesses the one legendary creature whose colours cover the whole deck.
+Unfinity sticker sheets aren't part of the 100, so the importer sets them aside and says which ones.
 It writes a request with every missing card's cost, type and full rules text. Copy it or download it
 as Markdown and send it to Claude to get those cards implemented.
 
