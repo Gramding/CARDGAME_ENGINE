@@ -65,6 +65,13 @@ const ELVES = { name: 'Wirewood Elf', layout: 'normal', mana_cost: '{1}{G}', cmc
       if (!(await p.evaluate(() => S.stack.some(x => x.name === 'Wirewood Elf')))) fail('with hold priority on, the spell should wait on the stack');
       await p.evaluate(() => { resolveTop(); }); await p.waitForTimeout(200);
       if (!(await p.evaluate(() => S.bf.some(x => x.name === 'Wirewood Elf')))) fail('an unmodeled creature could not be cast');
+      // handing the same deck over again starts a fresh game, not the one in progress (here a broken one)
+      await p.evaluate(() => { S.phase = 'play'; S.cmdZone = ['Wirewood Elf', 'Sol Ring', 'Island']; saveLocal(); });
+      await p.goto(BASE + '?deck=imp-kefka-test');   // where the importer's Play button goes
+      await p.waitForTimeout(400);
+      const again = await p.evaluate(() => ({ cmd: S.cmdZone, size: S.lib.length + S.hand.length, phase: S.phase }));
+      console.log('   again:', JSON.stringify(again));
+      if (again.cmd.join() !== 'Kefka, Court Mage // Kefka, Ruler of Ruin' || again.size !== 99 || again.phase !== 'mull') fail('a second hand-off picked up the old game');
     }
     await p.close();
   }

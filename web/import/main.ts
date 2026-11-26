@@ -43,6 +43,7 @@ function render() {
   if (guessed) warns.push(`No commander was marked, so the guess is ${guessed.split(" // ")[0]}: the only legendary creature whose colors cover the whole deck. To pick another, put it first with a blank line after it.`);
   const picks = deck.commanders.length ? [] : commanderCandidates(deck, current.cards);
   if (!deck.commanders.length) warns.push(picks.length ? `No commander was marked, and ${picks.length} legends could lead this deck. Pick one below.` : "No commander found. Put it first with a blank line after it, or under a \"Commander\" heading.");
+  if (deck.commanders.length > 2) warns.push(`${deck.commanders.length} cards are marked as commanders. A deck has one, or two partners: check the Commander heading or the *CMDR* markers.`);
   if (size !== 100) warns.push(`The list has ${size} cards; a Commander deck has 100.`);
   $("warnings").innerHTML = warns.map(w => `<p class="warn">${esc(w)}</p>`).join("") +
     (picks.length ? `<div class="row picks">${picks.map(n => `<button class="btn" data-cmdr="${esc(n)}">${esc(n.split(" // ")[0])}</button>`).join("")}</div>` : "");

@@ -5076,7 +5076,7 @@ async function boot() {
   let want = null;
   try { want = new URLSearchParams(location.search).get("deck"); } catch (e) { /* no query */ }
   let saved = null; try { saved = localStorage.getItem("cge-deck"); } catch (e) { /* per-browser only */ }
-  if (want && want !== ((prev && prev.deck) || "krark")) { history.replaceState(null, "", location.pathname); newGame(want); }
+  if (want) { history.replaceState(null, "", location.pathname); newGame(want); }   // the importer handed a deck over: a fresh game, even if a game of the same deck was going
   else if (prev && prev.phase !== "over" && prev.lib) {
     useDeck(prev.deck || "krark");
     S = prev; for (const o of S.opp) if (o.hand == null) o.hand = S.oppHand ?? 7; delete S.oppHand; S.pool = { ...emptyPool(), ...S.pool }; if (!S.stack) S.stack = []; if (S.rng == null) S.rng = Math.floor(Math.random() * 4294967296);

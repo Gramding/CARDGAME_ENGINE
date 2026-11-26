@@ -31,7 +31,11 @@ export function parseDecklist(text: string): ParsedDeck {
 
   text.split(/\r?\n/).forEach((raw, i) => {
     const line = raw.trim();
-    if (!line) { if (blockHasCards) { block++; blockHasCards = false; } return; }
+    if (!line) {
+      if (blockHasCards) { block++; blockHasCards = false; }
+      if (section.startsWith("commander") && commanders.length) section = "";   // the cards after the commanders and a blank line are the deck
+      return;
+    }
     if (line.startsWith("//") || line.startsWith("#")) return;
     const sec = line.match(SECTION);
     if (sec) { section = sec[1].toLowerCase(); if (blockHasCards) { block++; blockHasCards = false; } return; }
