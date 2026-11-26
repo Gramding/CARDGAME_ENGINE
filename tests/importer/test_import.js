@@ -78,6 +78,7 @@ const ELVES = { name: 'Wirewood Elf', layout: 'normal', mana_cost: '{1}{G}', cmc
   if (!/the guess is Kefka, Court Mage/.test(warn)) fail('commander not guessed');
   if (/No commander found/.test(warn)) fail('still says no commander');
   if (prompt) fail('a fully modeled deck should need no request');
+  if (!/^Commander: Kefka, Court Mage \(guessed\)$/.test(await p.textContent('#cmdLine'))) fail('the guessed commander is not shown: ' + await p.textContent('#cmdLine'));
   // two legends could lead it: the warning offers both, and a click picks one
   await check(p, [...lines.slice(1, 40), lines[0], ...lines.slice(40, -1), '1 Kefka Twin'].join('\n'));
   const picks = await p.$$eval('[data-cmdr]', els => els.map(e => e.textContent));
@@ -86,6 +87,12 @@ const ELVES = { name: 'Wirewood Elf', layout: 'normal', mana_cost: '{1}{G}', cmc
   await p.click('[data-cmdr="Kefka, Court Mage // Kefka, Ruler of Ruin"]');
   if (!/Kefka, Court Mage is the commander/.test(await p.textContent('#status'))) fail('picking a commander did not take');
   if (await p.$('[data-cmdr]')) fail('the commander buttons stay after a pick');
+  // partners marked with *CMDR*, set code and collector number on the line, two blank lines after them
+  await check(p, ['1 Kefka, Court Mage (FIN) 226 *CMDR*', '1 Kefka Twin (SLD) 1541★ *CMDR*', '', '', ...lines.slice(1, -1)].join('\n'));
+  const cl = await p.textContent('#cmdLine');
+  console.log('partners |', cl, '|', (await p.$$eval('.stat', e => e.map(x => x.textContent.trim()))).slice(0, 1).join());
+  if (cl !== 'Commanders: Kefka, Court Mage + Kefka Twin') fail('both marked commanders are not shown: ' + cl);
+  if (/No commander/.test(await p.textContent('#warnings'))) fail('marked partners still warn about a commander');
   await p.close();
   console.log('errors:', errs);
   await b.close();

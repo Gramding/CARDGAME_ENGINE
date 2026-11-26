@@ -24,6 +24,7 @@
     <label for="deckName" class="lbl">Deck name (optional)</label>
     <input id="deckName" placeholder="e.g. Kefka Storm">
     <label for="deckText" class="lbl">Cards, one per line (Moxfield or Arena export)</label>
+    <p class="hint" id="cmdHint">Mark the commander, or both partners, with <code>*CMDR*</code> at the end of the line, put them under a <code>Commander</code> heading, or put them first with a blank line after them.</p>
     <textarea id="deckText" rows="14" spellcheck="false" placeholder="1 Kefka, Court Mage // Kefka, Ruler of Ruin&#10;&#10;1 Displacer Kitten&#10;1 Gilded Drake&#10;…"></textarea>
     <div class="row">
       <button class="btn primary" id="check">Check deck</button>
@@ -33,6 +34,7 @@
 
   <section class="panel" id="result" aria-labelledby="resultTitle" hidden>
     <h2 id="resultTitle">2 · Coverage</h2>
+    <p class="cmdline" id="cmdLine" hidden></p>
     <div class="summary" id="summary"></div>
     <div class="row playrow"><button class="btn primary" id="play">Play it in the playtester</button><span class="hint" id="playHint"></span></div>
     <div id="warnings"></div>
