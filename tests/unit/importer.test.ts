@@ -45,6 +45,12 @@ describe("parseDecklist", () => {
     expect(d.warnings).toEqual([]);
   });
 
+  it("ends a Commander section at the blank line after it", () => {
+    const d = parseDecklist(`Commander\n1 Kodama of the East Tree\n1 Sakashima of a Thousand Faces\n\n1 Sol Ring\n1 Forest`);
+    expect(d.commanders).toEqual(["Kodama of the East Tree", "Sakashima of a Thousand Faces"]);
+    expect(d.cards.map(c => c.name)).toEqual(["Sol Ring", "Forest"]);
+  });
+
   it("takes a *CMDR* marker as the commander", () => {
     const d = parseDecklist(`1 Sol Ring\n1 Kefka, Court Mage *CMDR*\n1 Island`);
     expect(d.commanders).toEqual(["Kefka, Court Mage"]);
