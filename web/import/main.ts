@@ -31,6 +31,9 @@ function render() {
   if (!current) return;
   const { deck, cov, guessed } = current;
   const size = deckSize(deck);
+  const cl = $("cmdLine"), cmdrs = deck.commanders.map(n => n.split(" // ")[0]);
+  cl.hidden = !cmdrs.length;
+  cl.innerHTML = cmdrs.length ? `${cmdrs.length > 1 ? "Commanders" : "Commander"}: <b>${cmdrs.map(esc).join("</b> + <b>")}</b>${guessed ? " (guessed)" : ""}` : "";
   $("summary").innerHTML = [
     ["", String(size), "cards"], ["", cov.colors.join("") || "C", "colors"],
     ["modeled", String(cov.counts.modeled), "modeled"], ["data", String(cov.counts.data), "data only"], ["script", String(cov.counts.script), "need scripting"],

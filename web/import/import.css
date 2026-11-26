@@ -39,6 +39,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .gap b { display: block; margin-bottom: 4px; }
 .gap p { margin: 0; color: var(--muted); font-size: 14px; }
 .warn { color: var(--data); font-size: 14px; margin: 0 0 8px; }
+.cmdline { margin: 0 0 10px; font-size: 15px; }
+.cmdline b { font-family: var(--display); }
+#cmdHint { display: block; margin: 0 0 6px; }
+#cmdHint code { font-size: 13px; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
 .chip { font: inherit; font-size: 13px; font-weight: 700; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .chip.on { color: var(--ink); border-color: var(--blue); background: color-mix(in srgb, var(--blue) 14%, transparent); }

@@ -121,6 +121,8 @@ or Moxfield's `[Commander]` category tag works too, and other category tags are 
 
 If no commander is marked, it guesses the one legendary creature whose colours cover the whole deck.
 Unfinity sticker sheets aren't part of the 100, so the importer sets them aside and says which ones.
+Partners work the same way: mark both with `*CMDR*`, list both under the `Commander` heading, or put
+both first with a blank line after them. The coverage panel names the commanders it found.
 It writes a request with every missing card's cost, type and full rules text. Copy it or download it
 as Markdown and send it to Claude to get those cards implemented.
 
